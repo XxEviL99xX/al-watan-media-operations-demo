@@ -369,7 +369,7 @@ const DICT = {
   /* journal panel */
   journal_h:      {en:"Select reporter / presenter", ar:"اختيار المراسل / المقدّم"},
   journal_pick:   {en:"Choose who covers this request:", ar:"اختر من يغطي هذا الطلب:"},
-  confirm_reporter:{en:"Confirm selection & send to Head", ar:"تأكيد الاختيار وإرسال للرئيس"},
+  confirm_reporter:{en:"Confirm selection & start production", ar:"تأكيد الاختيار وبدء الإنتاج"},
 
   /* revision routing */
   routing_h:      {en:"Revision routing — pick the restart stage", ar:"توجيه التعديلات — اختر مرحلة الاستئناف"},
@@ -678,9 +678,30 @@ function tl(actor,en,ar,time){ return {actor, en, ar, time: time||Date.now()}; }
 function tlNote(actor,en,ar,note){ return {actor, en, ar, note:note||"", time:Date.now()}; }
 function noti(role,reqId,en,ar){ return {id:uid(), role, reqId, en, ar, read:false, time:Date.now()}; }
 function uid(){ return Math.random().toString(36).slice(2,9); }
+function migrateSavedWorkflow(saved){
+  let changed=false;
+  (saved.requests||[]).forEach(rq=>{
+    const assign=rq.assign;
+    const teamWasAlreadyComplete=assign&&assign.reporterChosen&&assign.reporter&&assign.producers?.length&&assign.editors?.length;
+    if(rq.status==="assign_team"&&teamWasAlreadyComplete){
+      rq.status="in_progress";
+      rq.timeline=rq.timeline||[];
+      rq.timeline.push(tl("journal","Workflow updated — Editorial Manager selection starts production directly.","تم تحديث سير العمل — اختيار مسؤول المحررين يبدأ الإنتاج مباشرة."));
+      changed=true;
+    }
+  });
+  return changed;
+}
 
 function load(){
-  try{ const raw=localStorage.getItem(LS_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(raw){
+      const saved=JSON.parse(raw);
+      if(migrateSavedWorkflow(saved)) localStorage.setItem(LS_KEY, JSON.stringify(saved));
+      return saved;
+    }
+  }catch(e){}
   const s = seed(); try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} return s;
 }
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
