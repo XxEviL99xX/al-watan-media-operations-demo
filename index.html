@@ -974,7 +974,6 @@ function viewNew(){
       <div>${lbl("f_email",0)}<input type="email" id="n_email" value="${val("email")}"></div>
       <div>${lbl("f_coverage",1)}<select class="f" id="n_coverage">${selOpts(COVERAGE, rq?rq.coverage:"comprehensive")}</select></div>
       <div>${lbl("f_event_type",1)}<select class="f" id="n_eventType">${selOpts(EVTYPE, rq?rq.eventType:"editorial")}</select></div>
-      <div>${lbl("f_event_date",0)}<input type="date" id="n_eventDate" min="${todayISO()}" value="${val("eventDate")}"></div>
       <div>${lbl("f_event_dt",0)}<input type="datetime-local" id="n_eventDateTime" min="${todayISO()}T00:00" value="${val("eventDateTime")}"></div>
       <div>${lbl("f_delivery",1)}<input type="date" id="n_due" min="${todayISO()}" value="${val("due")}"></div>
     </div>
@@ -1076,7 +1075,8 @@ function bindNew(){
     const title=g("n_title"), client=g("n_client"), due=g("n_due");
     const coverage=document.getElementById("n_coverage").value, eventType=document.getElementById("n_eventType").value;
     const contact=g("n_contact"), phone=g("n_phone"), email=g("n_email");
-    const eventDate=g("n_eventDate"), eventDateTime=g("n_eventDateTime");
+    const eventDateTime=g("n_eventDateTime");
+    const eventDate=eventDateTime ? eventDateTime.slice(0,10) : (rqEdit ? rqEdit.eventDate : "");
     const locationText=g("n_locationText"), notes=g("n_notes");
     const reporterNeeded=document.getElementById("n_reporter").checked;
     const journalistNeeded=document.getElementById("n_journalist").checked;
