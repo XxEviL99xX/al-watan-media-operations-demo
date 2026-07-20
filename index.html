@@ -438,7 +438,7 @@ const DICT = {
 function t(k){ const e=DICT[k]; return e ? e[state.lang] : k; }
 
 /* ---------- roles ---------- */
-const ROLES = ["requester","marketing","head","journal","review1","review2","client"];
+const ROLES = ["requester","marketing","head","journal","review1","review2","client","management"];
 const ROLE_LABEL = {
   requester:{en:"Requester",ar:"مقدم الطلب",ic:"📝"},
   marketing:{en:"Marketing Manager",ar:"مدير التسويق",ic:"📣"},
@@ -448,6 +448,7 @@ const ROLE_LABEL = {
   review1:{en:"Internal Reviewer · Group 1",ar:"مراجع داخلي · مجموعة ١",ic:"✅"},
   review2:{en:"Internal Reviewer · Group 2",ar:"مراجع داخلي · مجموعة ٢",ic:"✅"},
   client:{en:"Client",ar:"العميل",ic:"👤"},
+  management:{en:"Management",ar:"الإدارة",ic:"⚙️"},
 };
 const KIND_LABEL = {
   producer:{en:"Producer",ar:"منتج",ic:"🎬"},
@@ -949,6 +950,7 @@ function roleHint(r){
     review1:{en:"Internal review — Group 1",ar:"المراجعة الداخلية — مجموعة ١"},
     review2:{en:"Internal review — Group 2",ar:"المراجعة الداخلية — مجموعة ٢"},
     client:{en:"Reviews & approves the final video",ar:"يراجع الفيديو النهائي ويعتمده"},
+    management:{en:"External task-status controls",ar:"التحكم الخارجي بحالة المهام"},
   }[r]; return h?h[state.lang]:"";
 }
 function bindLogin(){
@@ -1186,7 +1188,7 @@ function viewList(archive){
   }else{
     body = rows.map(rq=>{
       const flag = isOwner(rq,r) ? `<span class="actionflag">⚡ ${esc(t("action_needed"))}</span>` : "";
-      const quickActions = r==="head"&&!archive
+      const quickActions = r==="management"&&!archive
         ? `<div class="quick-actions" data-quick-wrap>
             <select data-quick-status="${rq.id}" aria-label="${esc(t("quick_status"))}">${quickStatusOptions(rq.status)}</select>
             <button class="btn blue" data-quick-apply="${rq.id}">${esc(t("update_status"))}</button>
@@ -1226,12 +1228,12 @@ function bindList(){
 }
 
 function quickUpdateStatus(id,status){
-  if(myRole()!=="head" || !STATUS[status]) return;
+  if(myRole()!=="management" || !STATUS[status]) return;
   const rq=reqById(id); if(!rq || rq.status===status) return;
   if(status==="internal_review"){ rq.g1=false; rq.g2=false; }
-  addTl(rq,`Quick status update — moved to ${statusLabel(status)}.`,`تغيير سريع للحالة — الانتقال إلى ${statusLabel(status)}.`);
+  addTl(rq,`Management quick status update — moved to ${statusLabel(status)}.`,`تغيير سريع من الإدارة — الانتقال إلى ${statusLabel(status)}.`);
   rq.status=status;
-  notifyOwners(rq,"Task status was updated by the Production Head.","تم تحديث حالة المهمة بواسطة رئيس الإنتاج.");
+  notifyOwners(rq,"Task status was updated by Management.","تم تحديث حالة المهمة بواسطة الإدارة.");
   save(); render();
 }
 
