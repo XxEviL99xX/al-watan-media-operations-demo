@@ -236,6 +236,56 @@
   /* modal */
   .modal-ov{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:80;padding:18px}
   .modal{background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(16,24,40,.28);padding:20px 22px;width:100%;max-width:440px}
+
+  /* Mobile layout */
+  @media(max-width:720px){
+    body{font-size:13.5px}
+    .topbar{position:relative;flex-wrap:wrap;gap:8px;padding:10px 12px}
+    .topbar .logo{flex:1;min-width:150px;font-size:15px}
+    .topbar .spacer{display:none}
+    .topbar .navlink{order:3;flex:1;padding:7px 6px;font-size:12px}
+    .topbar .bell{margin-inline-start:auto}
+    .topbar select{max-width:140px}
+    .topbar #logoutBtn{padding:6px 8px}
+    .wrap{margin:14px auto;padding:0 12px}
+    .card{border-radius:12px}
+    .list-head{flex-wrap:wrap;margin-bottom:12px}
+    .list-head h1{width:100%;font-size:20px}
+    .tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;margin-inline:-2px}
+    .tab{white-space:nowrap;flex:0 0 auto;padding:7px 11px}
+    .reqrow{flex-wrap:wrap;gap:8px;padding:13px 14px}
+    .reqrow .idcol{min-width:0;width:100%;padding:0;font-size:12px}
+    .reqrow .main{min-width:0;width:100%}
+    .reqrow .t{font-size:14px}
+    .reqrow > div:last-child{width:100%;align-items:flex-start!important;text-align:start!important;flex-direction:row!important;flex-wrap:wrap}
+    .quick-actions{justify-content:flex-start;width:100%}
+    .quick-actions .btn{flex:1 1 145px;padding:8px 9px}
+    .summary{padding:15px 14px}
+    .section{padding:14px}
+    .sum-top{gap:8px}
+    .kv{grid-template-columns:1fr;gap:3px;margin-top:10px}
+    .kv .k{margin-top:7px}
+    .stepper{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;gap:8px}
+    .step{flex:0 0 68px;min-width:68px;font-size:10px}
+    .guide{padding:12px 13px}
+    .guide .grow{gap:7px}
+    .guide .tagk{min-width:65px}
+    .role-checks{gap:8px}
+    .role-check{flex:1;min-width:132px}
+    .map-box{height:220px}
+    .btnrow .btn{flex:1 1 150px}
+    .chips{gap:7px}
+    .chip{padding:7px 10px}
+    .noti-pop{position:fixed;inset-inline:12px;top:62px;width:auto;max-height:calc(100dvh - 78px)}
+    .modal{width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow-y:auto}
+  }
+
+  @media(max-width:380px){
+    .topbar .logo{min-width:120px}
+    .topbar .navlink{font-size:11px}
+    .topbar #roleSel{max-width:118px}
+    .quick-actions .btn{flex-basis:100%}
+  }
 </style>
 </head>
 <body>
