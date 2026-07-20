@@ -126,8 +126,7 @@
   .reqrow .t{font-weight:700;font-size:15px}
   .actionflag{background:#fff4e5;color:#b4620a;border:1px solid #f3d3ab;border-radius:20px;
     padding:2px 10px;font-size:11.5px;font-weight:700;white-space:nowrap}
-  .quick-actions{display:flex;align-items:center;gap:6px;margin-top:2px}
-  .quick-actions select{max-width:170px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:12px}
+  .quick-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-top:2px}
   .quick-actions .btn{padding:6px 9px;font-size:12px;white-space:nowrap}
 
   /* Status badge */
@@ -278,8 +277,6 @@ const DICT = {
   mute_noti:      {en:"Mute", ar:"كتم"},
   unmute_noti:    {en:"Unmute", ar:"إلغاء الكتم"},
   action_needed:  {en:"Action needed", ar:"إجراء مطلوب"},
-  quick_status:   {en:"Quick status", ar:"تغيير سريع للحالة"},
-  update_status:  {en:"Update", ar:"تحديث"},
 
   /* new request form */
   new_h:          {en:"New video production request", ar:"طلب إنتاج فيديو جديد"},
@@ -438,7 +435,7 @@ const DICT = {
 function t(k){ const e=DICT[k]; return e ? e[state.lang] : k; }
 
 /* ---------- roles ---------- */
-const ROLES = ["requester","marketing","head","journal","review1","review2","client","management"];
+const ROLES = ["requester","marketing","head","journal","review1","review2","client"];
 const ROLE_LABEL = {
   requester:{en:"Requester",ar:"مقدم الطلب",ic:"📝"},
   marketing:{en:"Marketing Manager",ar:"مدير التسويق",ic:"📣"},
@@ -448,7 +445,6 @@ const ROLE_LABEL = {
   review1:{en:"Internal Reviewer · Group 1",ar:"مراجع داخلي · مجموعة ١",ic:"✅"},
   review2:{en:"Internal Reviewer · Group 2",ar:"مراجع داخلي · مجموعة ٢",ic:"✅"},
   client:{en:"Client",ar:"العميل",ic:"👤"},
-  management:{en:"Management",ar:"الإدارة",ic:"⚙️"},
 };
 const KIND_LABEL = {
   producer:{en:"Producer",ar:"منتج",ic:"🎬"},
@@ -950,7 +946,6 @@ function roleHint(r){
     review1:{en:"Internal review — Group 1",ar:"المراجعة الداخلية — مجموعة ١"},
     review2:{en:"Internal review — Group 2",ar:"المراجعة الداخلية — مجموعة ٢"},
     client:{en:"Reviews & approves the final video",ar:"يراجع الفيديو النهائي ويعتمده"},
-    management:{en:"External task-status controls",ar:"التحكم الخارجي بحالة المهام"},
   }[r]; return h?h[state.lang]:"";
 }
 function bindLogin(){
@@ -1154,9 +1149,6 @@ const FILTERS = {
   production: rq=>["in_progress","shooting","editing","internal_review","revision_routing"].includes(rq.status),
   client:     rq=>["client_version","cancellation_request","ready_to_publish"].includes(rq.status),
 };
-function quickStatusOptions(current){
-  return Object.keys(STATUS).map(status=>`<option value="${status}" ${status===current?"selected":""}>${esc(statusLabel(status))}</option>`).join("");
-}
 function viewList(archive){
   const r=myRole();
   let base = state.requests.slice().sort((a,b)=>b.created-a.created);
@@ -1188,11 +1180,8 @@ function viewList(archive){
   }else{
     body = rows.map(rq=>{
       const flag = isOwner(rq,r) ? `<span class="actionflag">⚡ ${esc(t("action_needed"))}</span>` : "";
-      const quickActions = r==="management"&&!archive
-        ? `<div class="quick-actions" data-quick-wrap>
-            <select data-quick-status="${rq.id}" aria-label="${esc(t("quick_status"))}">${quickStatusOptions(rq.status)}</select>
-            <button class="btn blue" data-quick-apply="${rq.id}">${esc(t("update_status"))}</button>
-          </div>` : "";
+      const quickButtons = !archive&&isOwner(rq,r) ? actionButtons(rq,r).replaceAll("data-act=","data-quick-act=") : "";
+      const quickActions = quickButtons ? `<div class="quick-actions" data-quick-wrap>${quickButtons}</div>` : "";
       return `<div class="reqrow" data-open="${rq.id}">
         <div class="idcol">${esc(refOf(rq))}</div>
         <div class="main">
@@ -1218,23 +1207,23 @@ function bindList(){
   document.querySelectorAll("[data-filter]").forEach(el=>el.onclick=()=>{ state.filter=el.dataset.filter; save(); render(); });
   document.querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>{ state.activeReq=+el.dataset.open; state.view="detail"; save(); render(); });
   document.querySelectorAll("[data-quick-wrap]").forEach(el=>el.onclick=e=>e.stopPropagation());
-  document.querySelectorAll("[data-quick-apply]").forEach(el=>el.onclick=e=>{
+  document.querySelectorAll("[data-quick-act]").forEach(el=>el.onclick=e=>{
     e.stopPropagation();
-    const id=+el.dataset.quickApply;
-    const select=document.querySelector(`[data-quick-status="${id}"]`);
-    if(select) quickUpdateStatus(id,select.value);
+    const id=+el.closest("[data-open]").dataset.open;
+    runDashboardAction(el.dataset.quickAct,reqById(id));
   });
   const nb=document.getElementById("listNew"); if(nb) nb.onclick=()=>{ state.view="new"; save(); render(); };
 }
 
-function quickUpdateStatus(id,status){
-  if(myRole()!=="management" || !STATUS[status]) return;
-  const rq=reqById(id); if(!rq || rq.status===status) return;
-  if(status==="internal_review"){ rq.g1=false; rq.g2=false; }
-  addTl(rq,`Management quick status update — moved to ${statusLabel(status)}.`,`تغيير سريع من الإدارة — الانتقال إلى ${statusLabel(status)}.`);
-  rq.status=status;
-  notifyOwners(rq,"Task status was updated by Management.","تم تحديث حالة المهمة بواسطة الإدارة.");
-  save(); render();
+function runDashboardAction(act,rq){
+  if(!rq) return;
+  const noteActions={mk_changes:"note_t_changes",hd_changes:"note_t_changes",mk_toreq:"note_t_sendback",
+    r1_ch:"note_t_changes",r2_ch:"note_t_changes",cl_ch:"note_t_changes",cl_final:"note_t_final",
+    cl_rej:"note_t_reject",hd_confirm_cancel:"note_t_cancel",route_ip:"note_t_route",route_sh:"note_t_route",route_ed:"note_t_route"};
+  const required=["cl_rej","hd_confirm_cancel"];
+  if(act==="re_resubmit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
+  if(noteActions[act]){ askNote(t(noteActions[act]),note=>doAction(act,rq,note),required.includes(act)); return; }
+  doAction(act,rq);
 }
 
 /* ---------- Detail ---------- */
