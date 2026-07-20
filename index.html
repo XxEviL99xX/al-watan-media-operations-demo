@@ -99,6 +99,10 @@
   .chk-row{display:flex;align-items:center;gap:10px;margin:16px 0 4px;font-weight:600;cursor:pointer;
     border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:var(--bg)}
   .chk-row input{width:18px;height:18px}
+  .role-checks{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 16px}
+  .role-check{display:flex;align-items:center;gap:8px;min-width:150px;cursor:pointer;
+    border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:var(--bg);font-weight:600}
+  .role-check input{width:18px;height:18px}
   .attach-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .attach-chip{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 11px;font-size:12.5px}
   /* media gallery in a task */
@@ -293,7 +297,9 @@ const DICT = {
   f_location:     {en:"Location", ar:"الموقع"},
   f_location_ph:  {en:"Address / venue (text)", ar:"العنوان / المكان (نص)"},
   map_hint:       {en:"Click the map to drop a pin", ar:"انقر على الخريطة لتحديد الموقع"},
-  f_reporter_q:   {en:"Needs a reporter / journalist?", ar:"هل يحتاج مراسل / صحفي؟"},
+  f_reporter_q:   {en:"Editorial roles needed (optional)", ar:"الأدوار التحريرية المطلوبة (اختياري)"},
+  f_reporter:     {en:"Reporter", ar:"مراسل"},
+  f_journalist:   {en:"Journalist", ar:"صحفي"},
   f_notes:        {en:"Notes", ar:"ملاحظات"},
   f_attach:       {en:"Attachments", ar:"مرفقات"},
   f_attach_hint:  {en:"You can upload files (images, video, references).", ar:"يمكنك رفع ملفات (صور، فيديو، مراجع)."},
@@ -616,7 +622,7 @@ function seed(){
     contact:"", phone:"", email:"", eventDate:"", eventDateTime:"",
     coverage:"comprehensive", eventType:"editorial",
     locationText:"", locationLat:null, locationLng:null, attachments:[], notes:"",
-    assign:{producers:[],editors:[],reporterNeeded:false,reporterChosen:false,reporter:null},
+    assign:{producers:[],editors:[],reporterNeeded:false,journalistNeeded:false,reporterChosen:false,reporter:null},
     g1:false, g2:false, clientLink:null, comments:[], timeline:[]
   }, o);
   const reqs = [
@@ -689,6 +695,7 @@ function fmtDay(s){ if(!s) return "—"; const d=new Date(s); return d.toLocaleD
 function todayISO(){ const d=new Date(); const l=new Date(d.getTime()-d.getTimezoneOffset()*60000); return l.toISOString().slice(0,10); }
 function refOf(rq){ return "VPR-"+new Date(rq.created).getFullYear()+"-"+String(rq.id).padStart(4,"0"); }
 function reqById(id){ return state.requests.find(r=>r.id===id); }
+function needsEditorial(req){ return !!(req && req.assign && (req.assign.reporterNeeded || req.assign.journalistNeeded)); }
 function myRole(){ return state.currentUser; }
 function isOwner(req, uid){
   const kinds = STATUS[req.status].owner || [];
@@ -972,15 +979,22 @@ function viewNew(){
       <div>${lbl("f_delivery",1)}<input type="date" id="n_due" min="${todayISO()}" value="${val("due")}"></div>
     </div>
 
+    ${lbl("f_reporter_q",0)}
+    <div class="role-checks" role="group" aria-label="${esc(t("f_reporter_q"))}">
+      <label class="role-check" for="n_reporter">
+        <input type="checkbox" id="n_reporter" ${rq&&rq.assign&&rq.assign.reporterNeeded?"checked":""}>
+        <span>🎤 ${esc(t("f_reporter"))}</span>
+      </label>
+      <label class="role-check" for="n_journalist">
+        <input type="checkbox" id="n_journalist" ${rq&&rq.assign&&rq.assign.journalistNeeded?"checked":""}>
+        <span>📰 ${esc(t("f_journalist"))}</span>
+      </label>
+    </div>
+
     ${lbl("f_location",0)}
     <input type="text" id="n_locationText" value="${val("locationText")}" placeholder="${esc(t("f_location_ph"))}">
     <div class="map-hint small muted">🗺️ ${esc(t("map_hint"))} <span id="n_coords" class="refchip"></span></div>
     <div id="n_map" class="map-box"></div>
-
-    <label class="chk-row" for="n_reporter">
-      <input type="checkbox" id="n_reporter" ${rq&&rq.assign&&rq.assign.reporterNeeded?"checked":""}>
-      <span>🎤 ${esc(t("f_reporter_q"))}</span>
-    </label>
 
     ${lbl("f_notes",0)}
     <textarea id="n_notes" placeholder="${esc(t("f_notes"))}">${val("notes")}</textarea>
@@ -1065,6 +1079,7 @@ function bindNew(){
     const eventDate=g("n_eventDate"), eventDateTime=g("n_eventDateTime");
     const locationText=g("n_locationText"), notes=g("n_notes");
     const reporterNeeded=document.getElementById("n_reporter").checked;
+    const journalistNeeded=document.getElementById("n_journalist").checked;
     const files=await readFiles(document.getElementById("n_attach").files||[]);
     if(!title||!client||!due){
       err.textContent = state.lang==="ar"?"الرجاء تعبئة الحقول المطلوبة (*).":"Please fill the required fields (*).";
@@ -1083,7 +1098,8 @@ function bindNew(){
       Object.assign(rq, fields);
       rq.attachments=(rq.attachments||[]).concat(files);
       rq.assign.reporterNeeded=reporterNeeded;
-      if(!reporterNeeded){ rq.assign.reporterChosen=false; rq.assign.reporter=null; }
+      rq.assign.journalistNeeded=journalistNeeded;
+      if(!needsEditorial(rq)){ rq.assign.reporterChosen=false; rq.assign.reporter=null; }
       state.activeReq=rq.id; state.editReq=null;
       const cu=state.currentUser; state.currentUser="requester";
       addTl(rq,"Edited & resubmitted the request.","تم تعديل الطلب وإعادة إرساله.",note);
@@ -1094,7 +1110,7 @@ function bindNew(){
     }
     const r=Object.assign({ id:state.seq++, requester:"requester", status:"marketing_approval", created:Date.now(),
       attachments:files,
-      assign:{producers:[],editors:[],reporterNeeded, reporterChosen:false, reporter:null},
+      assign:{producers:[],editors:[],reporterNeeded,journalistNeeded,reporterChosen:false,reporter:null},
       g1:false,g2:false,clientLink:null,comments:[],
       timeline:[tl("requester","Submitted the request.","قدّم الطلب.")] }, fields);
     state.requests.push(r);
@@ -1193,8 +1209,9 @@ function viewDetail(){
   const evWhen = rq.eventDateTime ? fmtDate(rq.eventDateTime) : (rq.eventDate?fmtDay(rq.eventDate):"—");
   const locLink = (rq.locationLat!=null)
     ? ` · <a href="https://www.openstreetmap.org/?mlat=${rq.locationLat}&mlon=${rq.locationLng}#map=15/${rq.locationLat}/${rq.locationLng}" target="_blank" rel="noopener">${esc(t("view_map"))} ↗</a>` : "";
-  const repRow = rq.assign.reporterNeeded
-    ? `<div class="k">${esc(t("kind_reporter"))}</div><div class="v" dir="auto">✅ ${esc(state.lang==="ar"?"مطلوب":"Required")}${(!clientView&&rq.assign.reporter)?` · ${esc(rq.assign.reporter)}`:""}</div>` : "";
+  const editorialRoles = [rq.assign.reporterNeeded&&t("f_reporter"),rq.assign.journalistNeeded&&t("f_journalist")].filter(Boolean);
+  const repRow = editorialRoles.length
+    ? `<div class="k">${esc(t("f_reporter_q"))}</div><div class="v" dir="auto">✅ ${esc(editorialRoles.join(" / "))}${(!clientView&&rq.assign.reporter)?` · ${esc(rq.assign.reporter)}`:""}</div>` : "";
   const contactRows = clientView ? "" :
     `${rq.contact?`<div class="k">${esc(t("f_contact"))}</div><div class="v" dir="auto">${esc(rq.contact)}</div>`:""}
      ${rq.phone?`<div class="k">${esc(t("f_phone"))}</div><div class="v">${esc(rq.phone)}</div>`:""}
@@ -1305,6 +1322,7 @@ function actionButtons(rq, r){
 }
 
 function assignPanel(rq){
+  const editorialNeeded=needsEditorial(rq);
   const chipSet=(key,list)=>list.map(name=>{
     const sel=rq.assign[key].includes(name)?"sel":"";
     return `<span class="chip ${sel}" data-pick="${key}|${esc(name)}">${esc(name)}</span>`;
@@ -1315,15 +1333,15 @@ function assignPanel(rq){
     <div class="small muted" style="margin-top:12px">${esc(t("editors"))}</div>
     <div class="chips">${chipSet("editors",ROSTER.editors)}</div>
     <label class="f" style="display:flex;align-items:center;gap:8px;margin-top:16px;font-weight:600">
-      <input type="checkbox" id="repNeeded" ${rq.assign.reporterNeeded?"checked":""} style="width:auto">
+      <input type="checkbox" id="repNeeded" ${editorialNeeded?"checked":""} style="width:auto">
       ${esc(t("need_reporter"))}
     </label>
-    <div id="repRuleBox" class="${rq.assign.reporterNeeded?"":"hidden"}">
+    <div id="repRuleBox" class="${editorialNeeded?"":"hidden"}">
       <div class="note">${esc(t("reporter_rule"))}</div>
       ${rq.assign.reporterChosen?`<div class="small" style="color:var(--assign);font-weight:700;margin-top:8px">✔ ${esc(t("reporter_chosen"))}: ${esc(rq.assign.reporter)}</div>`:""}
     </div>
     <div class="btnrow" style="margin-top:16px">
-      ${(rq.assign.reporterNeeded && !rq.assign.reporterChosen)
+      ${(editorialNeeded && !rq.assign.reporterChosen)
         ? `<button class="btn blue" id="reqJournal">${esc(t("request_journal"))}</button>`
         : `<button class="btn good" id="finalizeTeam">${esc(t("finalize_team"))}</button>`}
     </div>`;
@@ -1406,7 +1424,7 @@ function bindDetail(){
     save(); render();
   });
   const rn=document.getElementById("repNeeded");
-  if(rn) rn.onchange=()=>{ rq.assign.reporterNeeded=rn.checked; if(!rn.checked){rq.assign.reporterChosen=false;rq.assign.reporter=null;} save(); render(); };
+  if(rn) rn.onchange=()=>{ rq.assign.reporterNeeded=rn.checked; rq.assign.journalistNeeded=false; if(!rn.checked){rq.assign.reporterChosen=false;rq.assign.reporter=null;} save(); render(); };
   const rj=document.getElementById("reqJournal");
   if(rj) rj.onclick=()=>{
     addTl(rq,"Requested a reporter/presenter from the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
