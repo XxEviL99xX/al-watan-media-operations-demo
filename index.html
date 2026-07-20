@@ -215,10 +215,20 @@
   :root[data-theme="dark"]{
     --bg:#0e131b; --panel:#161d28; --ink:#e6e9ef; --muted:#93a0b2; --line:#2a3442;
     --brand:#182739; --brand2:#5f95d0; --shadow:0 1px 3px rgba(0,0,0,.45);
+    color-scheme:dark;
   }
   :root[data-theme="dark"] .btn{background:#1e2733;color:var(--ink);border-color:var(--line)}
   :root[data-theme="dark"] .btn:hover{background:#243040}
-  :root[data-theme="dark"] input,:root[data-theme="dark"] textarea,:root[data-theme="dark"] select.f{background:#1e2733;color:var(--ink);border-color:var(--line)}
+  :root[data-theme="dark"] input,:root[data-theme="dark"] textarea,:root[data-theme="dark"] select{background:#1e2733;color:var(--ink);border-color:var(--line)}
+  :root[data-theme="dark"] select option{background:#1e2733;color:var(--ink)}
+  :root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder{color:#aab5c3;opacity:1}
+  :root[data-theme="dark"] .topbar select{background:rgba(255,255,255,.12);color:#fff}
+  :root[data-theme="dark"] .topbar select option{background:#1e2733;color:var(--ink)}
+  :root[data-theme="dark"] .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+  :root[data-theme="dark"] .btn.good{background:var(--assign);color:#fff;border-color:var(--assign)}
+  :root[data-theme="dark"] .btn.warn{background:var(--changes);color:#fff;border-color:var(--changes)}
+  :root[data-theme="dark"] .btn.danger{background:var(--cancelled);color:#fff;border-color:var(--cancelled)}
+  :root[data-theme="dark"] .btn.blue{background:var(--routing);color:#fff;border-color:var(--routing)}
   :root[data-theme="dark"] .brief,:root[data-theme="dark"] .role-card,:root[data-theme="dark"] .cmt,:root[data-theme="dark"] .modal,:root[data-theme="dark"] .noti-pop{background:#1b2431}
   :root[data-theme="dark"] .reqrow:hover{background:#1b2431}
   :root[data-theme="dark"] .role-card .ic{background:#232e3d}
