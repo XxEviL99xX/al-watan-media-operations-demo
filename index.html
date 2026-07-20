@@ -1,18 +1,1559 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Al Watan | Video Production Workflow</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Al Watan — Video Production Request Workflow (Demo)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --ink:#1f2430; --muted:#6b7280; --line:#e3e6ec;
+    --brand:#1f3a5f; --brand2:#2f5d8a;
+    --approval:#6d5ac4; --changes:#d9822b; --assign:#2f9e6f; --work:#2f8f9e;
+    --review:#4f63c4; --routing:#2f7fd6; --client:#5a6b8c; --done:#6f9e2f; --cancelled:#c0392b;
+    --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI",Tahoma,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    font-size:14px;line-height:1.5}
+  html[dir="rtl"] body{font-family:"Segoe UI","Tahoma","Cairo",system-ui,sans-serif}
+  button{font-family:inherit;font-size:14px;cursor:pointer}
+  a{color:var(--brand2)}
+  .hidden{display:none!important}
+
+  /* Top bar */
+  .topbar{position:sticky;top:0;z-index:40;background:var(--brand);color:#fff;
+    display:flex;align-items:center;gap:14px;padding:10px 18px;box-shadow:var(--shadow)}
+  .topbar .logo{font-weight:700;font-size:16px;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+  .topbar .logo .dot{width:10px;height:10px;border-radius:50%;background:#e8b64c;display:inline-block}
+  .topbar .spacer{flex:1}
+  .topbar select,.topbar button{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);
+    padding:6px 10px;border-radius:8px}
+  .topbar select option{color:#111}
+  .topbar .bell{position:relative}
+  .badge{position:absolute;top:-6px;inset-inline-end:-6px;background:var(--cancelled);color:#fff;
+    border-radius:20px;min-width:18px;height:18px;padding:0 4px;font-size:11px;display:flex;align-items:center;justify-content:center}
+  .navlink{background:transparent!important;border-color:transparent!important;opacity:.85}
+  .navlink.active{opacity:1;border-color:rgba(255,255,255,.5)!important;background:rgba(255,255,255,.14)!important}
+
+  /* Layout */
+  .wrap{max-width:1080px;margin:22px auto;padding:0 18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:0 0 12px}
+  .muted{color:var(--muted)} .small{font-size:12.5px}
+
+  /* Login (professional) */
+  .auth{max-width:940px;margin:14px auto 44px;padding:0 18px;display:flex;flex-direction:column;gap:18px}
+  .auth-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    box-shadow:0 12px 34px rgba(16,24,40,.10);overflow:hidden;max-width:440px;margin:0 auto;width:100%}
+  .auth-hero{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:28px 26px 24px;text-align:center}
+  .auth-emblem{width:58px;height:58px;border-radius:16px;background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.32);display:flex;align-items:center;justify-content:center;font-size:27px;margin:0 auto 12px}
+  .auth-hero h1{font-size:21px;margin:0;letter-spacing:.2px}
+  .auth-hero p{margin:5px 0 0;opacity:.85;font-size:12.5px}
+  .auth-body{padding:24px 26px 26px}
+  .field{position:relative;margin-bottom:12px}
+  .field>.ic{position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);opacity:.5;font-size:15px;pointer-events:none}
+  .field input{padding-inline-start:39px;height:46px;width:100%;border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--ink);font-size:14px}
+  .field input:focus{outline:none;border-color:var(--brand2);box-shadow:0 0 0 3px rgba(47,93,138,.15)}
+  .flabel{font-weight:700;font-size:12.5px;margin:2px 0 6px}
+  .auth-body .btn.primary{width:100%;height:46px;font-size:15px;margin-top:6px}
+  .pass-hint{margin-top:12px;font-size:12px;color:var(--muted);background:var(--bg);border:1px dashed var(--line);border-radius:9px;padding:8px 11px}
+
+  .accounts{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px 20px}
+  .acct-title{font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .acct-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(216px,1fr));gap:10px;margin-top:8px}
+  .acct{display:flex;align-items:center;gap:11px;text-align:start;border:1px solid var(--line);border-radius:12px;
+    padding:10px 12px;background:var(--panel);cursor:pointer;transition:.12s}
+  .acct:hover{border-color:var(--brand2);box-shadow:var(--shadow);transform:translateY(-1px)}
+  .avatar{width:37px;height:37px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff}
+  .acct .nm{font-weight:700;font-size:13.5px;line-height:1.25}
+  .acct .rl{font-size:11.5px;color:var(--muted)}
+  .acct .un{font-family:monospace;font-size:11px;color:var(--brand2);margin-top:1px}
+
+  /* Buttons */
+  .btn{border:1px solid var(--line);background:#fff;padding:8px 14px;border-radius:9px;font-weight:600}
+  .btn:hover{background:#f7f8fa}
+  .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .btn.primary:hover{background:#25476f}
+  .btn.good{background:var(--assign);color:#fff;border-color:var(--assign)}
+  .btn.warn{background:var(--changes);color:#fff;border-color:var(--changes)}
+  .btn.danger{background:var(--cancelled);color:#fff;border-color:var(--cancelled)}
+  .btn.blue{background:var(--routing);color:#fff;border-color:var(--routing)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btnrow{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* Forms */
+  label.f{display:block;font-weight:600;margin:12px 0 5px}
+  input[type=text],input[type=date],input[type=datetime-local],input[type=email],input[type=tel],input[type=file],select.f,textarea{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px;background:var(--panel);color:var(--ink)}
+  textarea{min-height:80px;resize:vertical}
+  .req-star{color:var(--cancelled)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+  @media(max-width:560px){.form-grid{grid-template-columns:1fr}}
+  .map-box{height:260px;border:1px solid var(--line);border-radius:11px;margin-top:6px;overflow:hidden;z-index:0}
+  .map-hint{margin-top:8px}
+  .map-fallback{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);padding:12px;text-align:center}
+  .chk-row{display:flex;align-items:center;gap:10px;margin:16px 0 4px;font-weight:600;cursor:pointer;
+    border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:var(--bg)}
+  .chk-row input{width:18px;height:18px}
+  .attach-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .attach-chip{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 11px;font-size:12.5px}
+  /* media gallery in a task */
+  .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:6px}
+  .media-item{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg);text-decoration:none;color:var(--ink)}
+  .media-item img,.media-item video{width:100%;height:122px;object-fit:cover;display:block;background:#000}
+  .media-cap{padding:6px 9px;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .media-item.file{align-items:center;justify-content:center;padding:14px;text-align:center;gap:6px}
+  .media-item.file .media-cap{white-space:normal}
+  .media-file{font-size:30px}
+  :root[data-theme="dark"] input[type=file]{color:var(--ink)}
+
+  /* List */
+  .list-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .reqrow{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+  .reqrow:last-child{border-bottom:none}
+  .reqrow:hover{background:#f9fafb}
+  .reqrow .idcol{font-weight:700;color:var(--brand2);min-width:104px;font-family:monospace;font-size:12.5px;padding-top:2px}
+  .refchip{font-family:monospace;font-weight:700;color:var(--brand2);letter-spacing:.3px}
+  .reqrow .main{flex:1}
+  .reqrow .t{font-weight:700;font-size:15px}
+  .actionflag{background:#fff4e5;color:#b4620a;border:1px solid #f3d3ab;border-radius:20px;
+    padding:2px 10px;font-size:11.5px;font-weight:700;white-space:nowrap}
+
+  /* Status badge */
+  .st{display:inline-flex;align-items:center;gap:6px;color:#fff;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
+  .st::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.85)}
+  .st.approval{background:var(--approval)} .st.changes{background:var(--changes)}
+  .st.assign{background:var(--assign)} .st.work{background:var(--work)}
+  .st.review{background:var(--review)} .st.routing{background:var(--routing)}
+  .st.client{background:var(--client)} .st.done{background:var(--done)} .st.cancelled{background:var(--cancelled)}
+
+  /* Detail */
+  .summary{padding:18px 20px}
+  .sum-top{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin-top:12px}
+  .kv .k{color:var(--muted);font-size:12.5px} .kv .v{font-weight:600}
+  .section{padding:16px 20px;border-top:1px solid var(--line)}
+  .brief{background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px}
+
+  /* Stepper */
+  .stepper{display:flex;gap:4px;flex-wrap:wrap;margin-top:14px}
+  .step{flex:1;min-width:78px;text-align:center;font-size:11px;color:var(--muted);position:relative}
+  .step .num{width:26px;height:26px;border-radius:50%;background:#e6e9ef;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;font-weight:700;margin:0 auto 5px}
+  .step.on .num{background:var(--brand);color:#fff}
+  .step.done .num{background:var(--assign);color:#fff}
+
+  /* Timeline */
+  .tl{list-style:none;margin:12px 0 0;padding:0}
+  .tl li{position:relative;padding-inline-start:20px;padding-bottom:14px}
+  .tl li::before{content:"";position:absolute;inset-inline-start:4px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--brand2)}
+  .tl li::after{content:"";position:absolute;inset-inline-start:8px;top:14px;bottom:0;width:1px;background:var(--line)}
+  .tl li:last-child::after{display:none}
+  .tl .who{font-weight:700;font-size:12.5px}
+  .tl .tm{color:var(--muted);font-size:11.5px}
+
+  /* comments */
+  .cmt{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff}
+  .cmt .h{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .internal-tag{background:#eef;color:#4152c4;border-radius:6px;padding:1px 6px;font-size:10.5px;font-weight:700}
+
+  /* pick chips */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .chip{border:1px solid var(--line);border-radius:20px;padding:6px 12px;background:#fff;user-select:none}
+  .chip.sel{background:var(--assign);color:#fff;border-color:var(--assign)}
+
+  .note{background:#fbfbe8;border:1px solid #e8e7bd;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#6b6a2a}
+  .linkbox{background:#eef4fb;border:1px dashed #9dbbe0;border-radius:8px;padding:8px 10px;font-family:monospace;font-size:12px;word-break:break-all;color:#274b74}
+
+  /* notifications dropdown */
+  .noti-pop{position:absolute;inset-inline-end:0;top:44px;width:340px;max-height:420px;overflow-y:auto;background:var(--panel);color:var(--ink);
+    border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(16,24,40,.22);z-index:50}
+  .noti-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0}
+  .noti-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .noti-btn{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--ink);cursor:pointer}
+  .noti-btn.danger{color:var(--cancelled);border-color:var(--cancelled)}
+  .noti-item{position:relative;padding:11px 14px;padding-inline-end:32px;border-bottom:1px solid var(--line)}
+  .noti-item:hover{background:var(--bg)}
+  .noti-item.unread{background:rgba(47,127,214,.08)}
+  .noti-x{position:absolute;inset-inline-end:8px;top:9px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;cursor:pointer}
+  .noti-x:hover{background:var(--line);color:var(--ink)}
+  .empty{padding:30px;text-align:center;color:var(--muted)}
+
+  /* segmented toggle + icon buttons (top bar) */
+  .seg{display:inline-flex;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;border:none;color:#fff;padding:6px 11px;opacity:.72;font-weight:600}
+  .seg button.on{background:rgba(255,255,255,.24);opacity:1;font-weight:800}
+  .icon-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:8px;padding:6px 10px}
+
+  /* dashboard filter tabs */
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .tab{border:1px solid var(--line);background:var(--panel);color:var(--muted);padding:7px 13px;border-radius:20px;font-weight:600}
+  .tab:hover{border-color:var(--brand2)}
+  .tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .tab .cnt{opacity:.7;font-size:11px;margin-inline-start:6px}
+
+  /* guidance card */
+  .guide{margin:0 0 14px;border:1px solid var(--line);border-inline-start:4px solid var(--brand2);border-radius:12px;background:var(--panel);padding:14px 16px;box-shadow:var(--shadow)}
+  .guide .lead{font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px}
+  .guide .grow{margin-top:9px;display:flex;gap:10px;align-items:flex-start}
+  .guide .tagk{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);min-width:78px;padding-top:2px}
+  .guide.you{border-inline-start-color:var(--assign)}
+  .guide.wait{border-inline-start-color:var(--changes)}
+  .guide .youdo{color:var(--assign);font-weight:700}
+
+  /* dark theme */
+  :root[data-theme="dark"]{
+    --bg:#0e131b; --panel:#161d28; --ink:#e6e9ef; --muted:#93a0b2; --line:#2a3442;
+    --brand:#182739; --brand2:#5f95d0; --shadow:0 1px 3px rgba(0,0,0,.45);
+  }
+  :root[data-theme="dark"] .btn{background:#1e2733;color:var(--ink);border-color:var(--line)}
+  :root[data-theme="dark"] .btn:hover{background:#243040}
+  :root[data-theme="dark"] input,:root[data-theme="dark"] textarea,:root[data-theme="dark"] select.f{background:#1e2733;color:var(--ink);border-color:var(--line)}
+  :root[data-theme="dark"] .brief,:root[data-theme="dark"] .role-card,:root[data-theme="dark"] .cmt,:root[data-theme="dark"] .modal,:root[data-theme="dark"] .noti-pop{background:#1b2431}
+  :root[data-theme="dark"] .reqrow:hover{background:#1b2431}
+  :root[data-theme="dark"] .role-card .ic{background:#232e3d}
+  :root[data-theme="dark"] .chip{background:#1e2733;color:var(--ink);border-color:var(--line)}
+  :root[data-theme="dark"] .note{background:#2a2a18;border-color:#4a4a2a;color:#d9d9a0}
+  :root[data-theme="dark"] .tl-note{background:#2a2013;border-color:#5a4020;color:#e8c48a}
+  :root[data-theme="dark"] .linkbox{background:#14243a;border-color:#2f5480;color:#a9c8ee}
+  :root[data-theme="dark"] .actionflag{background:#3a2a10;border-color:#5c4420;color:#f0b969}
+  :root[data-theme="dark"] .noti-item.unread{background:#12243c}
+  :root[data-theme="dark"] .internal-tag{background:#25306a;color:#c9d2ff}
+
+  /* timeline note */
+  .tl-note{background:#fff7ed;border:1px solid #f3d3ab;border-radius:8px;padding:7px 10px;margin-top:5px;font-size:12.5px;color:#8a4b0a}
+
+  /* modal */
+  .modal-ov{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:80;padding:18px}
+  .modal{background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(16,24,40,.28);padding:20px 22px;width:100%;max-width:440px}
+</style>
 </head>
 <body>
-  <div id="app"></div>
-  <div id="modal-root"></div>
-  <div id="toast-root" aria-live="polite"></div>
-  <script src="app.js"></script>
+<div id="topbar"></div>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   Al Watan — Video Production Request Workflow  (clickable demo)
+   Single file · vanilla JS · localStorage · bilingual EN/AR (RTL)
+   ============================================================ */
+
+const LS_KEY = "watan_demo_v1";
+
+/* ---------- i18n dictionary ---------- */
+const DICT = {
+  app_title:      {en:"Video Production Request Workflow", ar:"سير عمل طلبات إنتاج الفيديو"},
+  demo_tag:       {en:"Demo", ar:"عرض تجريبي"},
+  sys_name:       {en:"Video Production Request System", ar:"نظام إدارة طلبات إنتاج الفيديو"},
+  login_title:    {en:"Sign in", ar:"تسجيل الدخول"},
+  login_sub:      {en:"Enter your username and password, or click an account below to fill it in.",
+                   ar:"أدخل اسم المستخدم وكلمة المرور، أو انقر حسابًا بالأسفل لتعبئتهما."},
+  username:       {en:"Username", ar:"اسم المستخدم"},
+  password:       {en:"Password", ar:"كلمة المرور"},
+  sign_in:        {en:"Sign in", ar:"دخول"},
+  quick_login:    {en:"Demo accounts — click one to fill the form", ar:"حسابات تجريبية — انقر أحدها لتعبئة النموذج"},
+  demo_pass_hint: {en:"Demo password for every account: demo123", ar:"كلمة مرور العرض لكل الحسابات: demo123"},
+  bad_creds:      {en:"Wrong username or password.", ar:"اسم المستخدم أو كلمة المرور غير صحيحة."},
+  switch_user:    {en:"Switch user", ar:"تبديل المستخدم"},
+  logout:         {en:"Log out", ar:"خروج"},
+  reset:          {en:"Reset demo", ar:"إعادة تعيين"},
+  nav_requests:   {en:"Requests", ar:"الطلبات"},
+  nav_new:        {en:"New request", ar:"طلب جديد"},
+  nav_archive:    {en:"Archive", ar:"الأرشيف"},
+  notifications:  {en:"Notifications", ar:"الإشعارات"},
+  no_noti:        {en:"No notifications", ar:"لا توجد إشعارات"},
+  mark_read:      {en:"Mark all read", ar:"تعليم الكل كمقروء"},
+  clear_all:      {en:"Clear all", ar:"مسح الكل"},
+  mute_noti:      {en:"Mute", ar:"كتم"},
+  unmute_noti:    {en:"Unmute", ar:"إلغاء الكتم"},
+  action_needed:  {en:"Action needed", ar:"إجراء مطلوب"},
+
+  /* new request form */
+  new_h:          {en:"New video production request", ar:"طلب إنتاج فيديو جديد"},
+  smartform_note: {en:"Smart form: required fields are enforced — the request arrives 100% complete, so no send-back for missing info.",
+                   ar:"نموذج ذكي: الحقول المطلوبة إلزامية — يصل الطلب مكتملًا 100%، فلا إرجاع بسبب نقص المعلومات."},
+  f_title:        {en:"Event name", ar:"اسم الفعالية"},
+  f_client:       {en:"Client name", ar:"اسم العميل"},
+  f_select_client:{en:"Select existing client", ar:"اختر عميلًا موجودًا"},
+  client_pick_none:{en:"— Select a client —", ar:"— اختر عميلًا —"},
+  select_client_hint:{en:"Pick a client to auto-fill their details, or type a new one below.",
+                      ar:"اختر عميلًا لتعبئة بياناته تلقائيًا، أو اكتب عميلًا جديدًا بالأسفل."},
+  f_contact:      {en:"Responsible person", ar:"الشخص المسؤول"},
+  f_phone:        {en:"Phone", ar:"الهاتف"},
+  f_email:        {en:"Email", ar:"الإيميل"},
+  f_event_date:   {en:"Event date", ar:"تاريخ الفعالية"},
+  f_coverage:     {en:"Coverage type", ar:"نوع التغطية"},
+  f_event_type:   {en:"Event type", ar:"نوع الفعالية"},
+  f_event_dt:     {en:"Event date & time", ar:"تاريخ ووقت الفعالية"},
+  f_delivery:     {en:"Expected delivery date", ar:"تاريخ التسليم المتوقع"},
+  f_location:     {en:"Location", ar:"الموقع"},
+  f_location_ph:  {en:"Address / venue (text)", ar:"العنوان / المكان (نص)"},
+  map_hint:       {en:"Click the map to drop a pin", ar:"انقر على الخريطة لتحديد الموقع"},
+  f_reporter_q:   {en:"Needs a reporter / journalist?", ar:"هل يحتاج مراسل / صحفي؟"},
+  f_notes:        {en:"Notes", ar:"ملاحظات"},
+  f_attach:       {en:"Attachments", ar:"مرفقات"},
+  f_attach_hint:  {en:"You can upload files (images, video, references).", ar:"يمكنك رفع ملفات (صور، فيديو، مراجع)."},
+  attach_toobig:  {en:"too large to preview in this demo", ar:"كبير جدًا للمعاينة في العرض"},
+  f_due:          {en:"Needed by", ar:"مطلوب بحلول"},
+  view_map:       {en:"View on map", ar:"عرض على الخريطة"},
+  cov_photos:     {en:"Photos", ar:"صور"},
+  cov_video:      {en:"Video", ar:"فيديو"},
+  cov_comprehensive:{en:"Comprehensive", ar:"شامل"},
+  et_paid:        {en:"Paid", ar:"مدفوع"},
+  et_free:        {en:"Free", ar:"مجاني"},
+  et_editorial:   {en:"Editorial", ar:"تحريري"},
+  et_vip:         {en:"VIP", ar:"VIP"},
+  submit_req:     {en:"Submit request", ar:"إرسال الطلب"},
+  cancel:         {en:"Cancel", ar:"إلغاء"},
+
+  /* summary card */
+  requester:      {en:"Requester", ar:"مقدم الطلب"},
+  client_l:       {en:"Client", ar:"العميل"},
+  type_l:         {en:"Type", ar:"النوع"},
+  due_l:          {en:"Needed by", ar:"مطلوب بحلول"},
+  owner_l:        {en:"Current owner", ar:"المسؤول الحالي"},
+  created_l:      {en:"Created", ar:"تاريخ الإنشاء"},
+  brief_l:        {en:"Brief", ar:"الملخّص"},
+  back:           {en:"‹ Back to list", ar:"› رجوع للقائمة"},
+  timeline_l:     {en:"History / audit trail", ar:"السجل / مسار التدقيق"},
+  comments_l:     {en:"Comments", ar:"التعليقات"},
+  add_comment:    {en:"Add comment", ar:"أضف تعليقًا"},
+  comment_ph:     {en:"Write a comment…", ar:"اكتب تعليقًا…"},
+  internal_only:  {en:"Internal", ar:"داخلي"},
+
+  /* actions */
+  approve:        {en:"Approve", ar:"موافقة"},
+  request_changes:{en:"Request changes", ar:"طلب تعديلات"},
+  resubmit:       {en:"Edit & resubmit", ar:"تعديل وإعادة إرسال"},
+  forward_head:   {en:"Fix & forward to Head", ar:"تعديل وإرسال للرئيس"},
+  send_requester: {en:"Send back to Requester", ar:"إرجاع لمقدم الطلب"},
+  mark_done:      {en:"Mark stage done", ar:"إنهاء المرحلة"},
+  approve_g1:     {en:"Approve (Group 1)", ar:"موافقة (مجموعة ١)"},
+  approve_g2:     {en:"Approve (Group 2)", ar:"موافقة (مجموعة ٢)"},
+  publish:        {en:"Publish", ar:"نشر"},
+  client_approve: {en:"Approve", ar:"موافقة"},
+  client_changes: {en:"Request changes", ar:"طلب تعديلات"},
+  client_reject:  {en:"Reject", ar:"رفض"},
+  final_change:   {en:"Request final change", ar:"طلب تعديل أخير"},
+  confirm_cancel: {en:"Confirm cancellation", ar:"تأكيد الإلغاء"},
+  continue_rout:  {en:"Continue (revise)", ar:"متابعة (تعديل)"},
+
+  /* assign team panel */
+  assign_h:       {en:"Assign team (pick the people, once)", ar:"تعيين الفريق (اختيار الأشخاص مرة واحدة)"},
+  producers:      {en:"Producers", ar:"المنتجون"},
+  editors:        {en:"Editors", ar:"المونتاج"},
+  need_reporter:  {en:"This request needs a reporter / presenter", ar:"يحتاج هذا الطلب إلى مراسل / مقدّم"},
+  reporter_rule:  {en:"Per policy, a copy goes to zalmushaigri@alwatannews.net and the reporter/presenter is assigned through the Editorial Manager only.",
+                   ar:"حسب السياسة، تُرسَل نسخة إلى zalmushaigri@alwatannews.net ويُعيَّن المراسل/المقدّم عبر مسؤول المحررين فقط."},
+  request_journal:{en:"Request reporter from Editorial Manager", ar:"طلب مراسل من مسؤول المحررين"},
+  finalize_team:  {en:"Finalize & start production", ar:"اعتماد الفريق وبدء الإنتاج"},
+  reporter_pending:{en:"Waiting for the Editorial Manager to select the reporter/presenter…",
+                    ar:"بانتظار اختيار مسؤول المحررين للمراسل/المقدّم…"},
+  reporter_chosen:{en:"Reporter/presenter selected", ar:"تم اختيار المراسل/المقدّم"},
+
+  /* journal panel */
+  journal_h:      {en:"Select reporter / presenter", ar:"اختيار المراسل / المقدّم"},
+  journal_pick:   {en:"Choose who covers this request:", ar:"اختر من يغطي هذا الطلب:"},
+  confirm_reporter:{en:"Confirm selection & send to Head", ar:"تأكيد الاختيار وإرسال للرئيس"},
+
+  /* revision routing */
+  routing_h:      {en:"Revision routing — pick the restart stage", ar:"توجيه التعديلات — اختر مرحلة الاستئناف"},
+  routing_note:   {en:"The team stays the same. Any revision re-passes full internal review (both groups; prior approvals cleared).",
+                   ar:"يبقى الفريق كما هو. أي تعديل يعيد المرور بالمراجعة الداخلية كاملة (المجموعتان؛ تُلغى الموافقات السابقة)."},
+  restart_ip:     {en:"Restart at In progress", ar:"الاستئناف من: قيد التنفيذ"},
+  restart_sh:     {en:"Restart at Shooting", ar:"الاستئناف من: التصوير"},
+  restart_ed:     {en:"Restart at Editing", ar:"الاستئناف من: المونتاج"},
+
+  /* client */
+  client_link_l:  {en:"Client portal link", ar:"رابط بوابة العميل"},
+  client_only_note:{en:"Clients see a simplified view — their own request only, no internal comments or team names.",
+                    ar:"يرى العملاء واجهة مبسّطة — طلبهم فقط، بدون تعليقات داخلية أو أسماء الفريق."},
+  review_groups:  {en:"Internal review groups", ar:"مجموعتا المراجعة الداخلية"},
+  g1_l:           {en:"Group 1 (any one approves)", ar:"المجموعة ١ (موافقة أي عضو)"},
+  g2_l:           {en:"Group 2 (any one approves)", ar:"المجموعة ٢ (موافقة أي عضو)"},
+  g1_ok:          {en:"Group 1 approved", ar:"وافقت المجموعة ١"},
+  g2_ok:          {en:"Group 2 approved", ar:"وافقت المجموعة ٢"},
+  awaiting_g:     {en:"Awaiting approval", ar:"بانتظار الموافقة"},
+
+  no_requests:    {en:"No requests yet.", ar:"لا توجد طلبات بعد."},
+  archived_empty: {en:"Nothing archived yet.", ar:"لا يوجد شيء في الأرشيف بعد."},
+  you_are:        {en:"You are viewing as", ar:"تعرض بصفتك"},
+  filled_by_role: {en:"reason / comment (optional)", ar:"السبب / التعليق (اختياري)"},
+
+  ok:             {en:"Confirm", ar:"تأكيد"},
+  org_roles:      {en:"Roles", ar:"الأدوار"},
+  team_members:   {en:"Production team members", ar:"أعضاء فريق الإنتاج"},
+  team_note:      {en:"They log in individually and act only on their own stage.",
+                   ar:"يسجّلون الدخول كلٌّ على حدة ويتصرّفون في مرحلتهم فقط."},
+  assigned_to_you:{en:"Assigned to you", ar:"مُسنَد إليك"},
+  your_stage:     {en:"Your turn", ar:"دورك الآن"},
+  kind_producer:  {en:"Producer", ar:"منتج"},
+  kind_editor:    {en:"Video editor", ar:"مونتير"},
+  kind_reporter:  {en:"Reporter / presenter", ar:"مراسل / مقدّم"},
+  note_change:    {en:"Change note (recorded in the audit trail)", ar:"ملاحظة التعديل (تُسجَّل في مسار التدقيق)"},
+
+  /* per-action note titles */
+  note_t_changes: {en:"Reason for requested changes", ar:"سبب طلب التعديلات"},
+  note_t_sendback:{en:"Reason for sending back", ar:"سبب الإرجاع"},
+  note_t_reject:  {en:"Reason for rejection", ar:"سبب الرفض"},
+  note_t_cancel:  {en:"Reason for cancellation", ar:"سبب الإلغاء"},
+  note_t_final:   {en:"Describe the final change requested", ar:"صف التعديل الأخير المطلوب"},
+  note_t_route:   {en:"Note for the team (optional)", ar:"ملاحظة للفريق (اختياري)"},
+
+  /* edit & resubmit */
+  edit_h:         {en:"Edit & resubmit request", ar:"تعديل الطلب وإعادة إرساله"},
+  edit_note_l:    {en:"What did you change? (note linked to this edit)", ar:"ما الذي غيّرته؟ (ملاحظة مرتبطة بهذا التعديل)"},
+  save_resubmit:  {en:"Save & resubmit", ar:"حفظ وإعادة إرسال"},
+  note_label:     {en:"Note", ar:"ملاحظة"},
+
+  g_here:         {en:"You are here", ar:"أنت هنا"},
+  g_next:         {en:"Next step", ar:"الخطوة التالية"},
+  g_todo:         {en:"Do now", ar:"المطلوب الآن"},
+  g_waiting:      {en:"Waiting on", ar:"بانتظار"},
+  g_client_wait:  {en:"Your video is being produced — we'll notify you when it's ready.",
+                   ar:"جارٍ إنتاج الفيديو — سنُعلمك عند الجاهزية."},
+
+  /* dashboard filter tabs */
+  tab_all:        {en:"All", ar:"الكل"},
+  tab_mine:       {en:"Needs my action", ar:"يتطلّب إجرائي"},
+  tab_approvals:  {en:"Approvals", ar:"الموافقات"},
+  tab_production: {en:"In production", ar:"قيد الإنتاج"},
+  tab_client:     {en:"With client", ar:"لدى العميل"},
+};
+function t(k){ const e=DICT[k]; return e ? e[state.lang] : k; }
+
+/* ---------- roles ---------- */
+const ROLES = ["requester","marketing","head","journal","review1","review2","client"];
+const ROLE_LABEL = {
+  requester:{en:"Requester",ar:"مقدم الطلب",ic:"📝"},
+  marketing:{en:"Marketing Manager",ar:"مدير التسويق",ic:"📣"},
+  head:{en:"Production Head",ar:"رئيس قسم الإنتاج",ic:"🎬"},
+  journal:{en:"Editorial Manager",ar:"مسؤول المحررين",ic:"🗞️"},
+  team:{en:"Production Team",ar:"فريق الإنتاج",ic:"🎥"},
+  review1:{en:"Internal Reviewer · Group 1",ar:"مراجع داخلي · مجموعة ١",ic:"✅"},
+  review2:{en:"Internal Reviewer · Group 2",ar:"مراجع داخلي · مجموعة ٢",ic:"✅"},
+  client:{en:"Client",ar:"العميل",ic:"👤"},
+};
+const KIND_LABEL = {
+  producer:{en:"Producer",ar:"منتج",ic:"🎬"},
+  editor:{en:"Video editor",ar:"مونتير",ic:"✂️"},
+  reporter:{en:"Reporter / presenter",ar:"مراسل / مقدّم",ic:"🎤"},
+};
+function kindOf(id){ if(ROLES.includes(id)) return id; return (typeof STAFF!=="undefined" && STAFF[id]) ? STAFF[id] : "staff"; }
+function isStaff(id){ return !ROLES.includes(id); }
+function roleName(r){
+  if(ROLE_LABEL[r]) return ROLE_LABEL[r][state.lang];
+  const k = kindOf(r);
+  return KIND_LABEL[k] ? (r+" · "+KIND_LABEL[k][state.lang]) : r;
+}
+function avatarBg(id){
+  const m={requester:"#2f8f9e",marketing:"#6d5ac4",head:"#1f3a5f",journal:"#4f63c4",
+           review1:"#4f63c4",review2:"#3f53b4",client:"#5a6b8c"};
+  if(m[id]) return m[id];
+  const k=STAFF[id]; return k==="producer"?"#2f9e6f":k==="editor"?"#2f8f9e":"#d9822b";
+}
+
+/* ---------- statuses ---------- */
+const STATUS = {
+  marketing_approval:  {cls:"approval", owner:["marketing"], step:2},
+  changes_requester:   {cls:"changes",  owner:["requester"], step:1},
+  head_approval:       {cls:"approval", owner:["head"], step:3},
+  changes_marketing:   {cls:"changes",  owner:["marketing"], step:2},
+  assign_team:         {cls:"assign",   owner:["head"], step:4},
+  journal_selection:   {cls:"assign",   owner:["journal"], step:4},
+  in_progress:         {cls:"work",     owner:["producer"], step:5},
+  shooting:            {cls:"work",     owner:["producer","reporter"], step:5},
+  editing:             {cls:"work",     owner:["editor"], step:5},
+  internal_review:     {cls:"review",   owner:["review1","review2"], step:5},
+  revision_routing:    {cls:"routing",  owner:["head"], step:5},
+  client_version:      {cls:"client",   owner:["client"], step:6},
+  cancellation_request:{cls:"changes",  owner:["head"], step:6},
+  ready_to_publish:    {cls:"work",     owner:["producer","editor","client"], step:7},
+  published:           {cls:"done",     owner:[], step:8},
+  cancelled:           {cls:"cancelled",owner:[], step:8},
+};
+const STATUS_LABEL = {
+  marketing_approval:{en:"Marketing approval",ar:"موافقة التسويق"},
+  changes_requester:{en:"Changes requested (Requester)",ar:"تعديلات مطلوبة (مقدم الطلب)"},
+  head_approval:{en:"Head approval",ar:"موافقة رئيس القسم"},
+  changes_marketing:{en:"Changes requested (Marketing)",ar:"تعديلات مطلوبة (التسويق)"},
+  assign_team:{en:"Assign team",ar:"تعيين الفريق"},
+  journal_selection:{en:"Reporter selection (Head of Journal)",ar:"اختيار المراسل (رئيس التحرير)"},
+  in_progress:{en:"In progress",ar:"قيد التنفيذ"},
+  shooting:{en:"Shooting",ar:"التصوير"},
+  editing:{en:"Editing",ar:"المونتاج"},
+  internal_review:{en:"Internal review",ar:"المراجعة الداخلية"},
+  revision_routing:{en:"Revision routing",ar:"توجيه التعديلات"},
+  client_version:{en:"Client version",ar:"نسخة العميل"},
+  cancellation_request:{en:"Cancellation request",ar:"طلب الإلغاء"},
+  ready_to_publish:{en:"Ready to publish",ar:"جاهز للنشر"},
+  published:{en:"Published & archived",ar:"تم النشر والأرشفة"},
+  cancelled:{en:"Cancelled / Rejected",ar:"ملغى / مرفوض"},
+};
+function statusLabel(s){ return STATUS_LABEL[s] ? STATUS_LABEL[s][state.lang] : s; }
+const STEP_LABEL=[
+  {en:"Request",ar:"طلب"},{en:"Marketing",ar:"التسويق"},{en:"Head",ar:"الرئيس"},
+  {en:"Assign",ar:"التعيين"},{en:"Production",ar:"الإنتاج"},{en:"Client",ar:"العميل"},
+  {en:"Publish",ar:"النشر"},{en:"Archived",ar:"الأرشفة"}
+];
+
+/* stage guidance: d = where you are · n = what's next · o = what the owner should do now */
+const STAGE_GUIDE = {
+  marketing_approval:{
+    d:{en:"The Marketing Manager is reviewing the request.",ar:"يراجع مدير التسويق الطلب."},
+    n:{en:"If approved → Production Head. If not → back to the Requester.",ar:"عند الموافقة ← رئيس الإنتاج. وإلا ← يعود لمقدم الطلب."},
+    o:{en:"Review the brief, then Approve or Request changes.",ar:"راجع الملخص ثم وافق أو اطلب تعديلات."}},
+  changes_requester:{
+    d:{en:"Changes were requested — the request is back with its Requester.",ar:"طُلبت تعديلات — الطلب لدى مقدّمه."},
+    n:{en:"After editing & resubmitting → Marketing approval again.",ar:"بعد التعديل وإعادة الإرسال ← موافقة التسويق من جديد."},
+    o:{en:"Open “Edit & resubmit”, fix the request, add a change note.",ar:"افتح «تعديل وإعادة إرسال»، صحّح الطلب وأضف ملاحظة."}},
+  head_approval:{
+    d:{en:"The Production Head is giving final authorization.",ar:"يمنح رئيس الإنتاج الاعتماد النهائي."},
+    n:{en:"If approved → Assign team. If not → back to Marketing.",ar:"عند الموافقة ← تعيين الفريق. وإلا ← يعود للتسويق."},
+    o:{en:"Approve to authorize, or Request changes.",ar:"وافق للاعتماد، أو اطلب تعديلات."}},
+  changes_marketing:{
+    d:{en:"The Head asked for changes — Marketing decides how to handle it.",ar:"طلب الرئيس تعديلات — يقرر التسويق المعالجة."},
+    n:{en:"Fix & forward to the Head, or send back to the Requester.",ar:"صحّح وأرسل للرئيس، أو أعد لمقدم الطلب."},
+    o:{en:"Fix & forward to Head, or send back to Requester.",ar:"صحّح وأرسل للرئيس، أو أعد لمقدم الطلب."}},
+  assign_team:{
+    d:{en:"The Production Head is assigning the people (once).",ar:"يعيّن رئيس الإنتاج الأشخاص (مرة واحدة)."},
+    n:{en:"Once finalized → production starts (In progress).",ar:"بعد الاعتماد ← يبدأ الإنتاج (قيد التنفيذ)."},
+    o:{en:"Pick producers & video editors. If a reporter is needed, request the Editorial Manager first.",ar:"اختر المنتجين والمونتيرين. إن لزم مراسل، اطلب مسؤول المحررين أولًا."}},
+  journal_selection:{
+    d:{en:"The Editorial Manager is selecting the reporter/presenter.",ar:"يختار مسؤول المحررين المراسل/المقدّم."},
+    n:{en:"After selection → back to the Head to finalize the team.",ar:"بعد الاختيار ← يعود للرئيس لاعتماد الفريق."},
+    o:{en:"Choose the reporter/presenter and confirm.",ar:"اختر المراسل/المقدّم وأكّد."}},
+  in_progress:{
+    d:{en:"Preparation & planning by the assigned producer.",ar:"التحضير والتخطيط بواسطة المنتج المعيَّن."},
+    n:{en:"Next stage → Shooting (التصوير).",ar:"المرحلة التالية ← التصوير."},
+    o:{en:"When planning is done, mark the stage done.",ar:"عند انتهاء التحضير، أنهِ المرحلة."}},
+  shooting:{
+    d:{en:"Filming on location — Shooting (التصوير).",ar:"التصوير في الموقع."},
+    n:{en:"Next stage → Editing (المونتاج).",ar:"المرحلة التالية ← المونتاج."},
+    o:{en:"When shooting is done, mark the stage done.",ar:"عند انتهاء التصوير، أنهِ المرحلة."}},
+  editing:{
+    d:{en:"Cut, graphics & audio by the video editor — Editing (المونتاج).",ar:"القص والغرافيك والصوت بواسطة المونتير (المونتاج)."},
+    n:{en:"Next → Internal review (both groups).",ar:"التالي ← المراجعة الداخلية (المجموعتان)."},
+    o:{en:"When editing is done, send it to internal review.",ar:"عند انتهاء المونتاج، أرسِله للمراجعة الداخلية."}},
+  internal_review:{
+    d:{en:"Internal review — one approval from each of the two groups.",ar:"المراجعة الداخلية — موافقة من كل مجموعة."},
+    n:{en:"Both approve → Client version. Any change → Revision routing.",ar:"موافقة الاثنتين ← نسخة العميل. أي تعديل ← توجيه التعديلات."},
+    o:{en:"Approve for your group, or Request changes (routed to the Head).",ar:"وافق لمجموعتك، أو اطلب تعديلات (تُحال للرئيس)."}},
+  revision_routing:{
+    d:{en:"The Production Head decides which stage to restart at.",ar:"يقرر رئيس الإنتاج مرحلة الاستئناف."},
+    n:{en:"Jumps to the chosen stage; team stays; review repeats.",ar:"ينتقل للمرحلة المختارة؛ الفريق كما هو؛ تُعاد المراجعة."},
+    o:{en:"Pick the restart stage: In progress / Shooting / Editing.",ar:"اختر مرحلة الاستئناف: قيد التنفيذ / التصوير / المونتاج."}},
+  client_version:{
+    d:{en:"Shared with the client through a portal link.",ar:"تمت المشاركة مع العميل عبر رابط البوابة."},
+    n:{en:"Approve → Ready to publish. Changes → Head. Reject → Cancellation.",ar:"موافقة ← جاهز للنشر. تعديلات ← الرئيس. رفض ← إلغاء."},
+    o:{en:"Watch the video, then Approve / Request changes / Reject.",ar:"شاهد الفيديو ثم وافق / اطلب تعديلات / ارفض."}},
+  cancellation_request:{
+    d:{en:"A cancellation was requested — Head/Management review.",ar:"طُلب الإلغاء — مراجعة الرئيس/الإدارة."},
+    n:{en:"Confirm → Cancelled. Continue → Revision routing.",ar:"تأكيد ← ملغى. متابعة ← توجيه التعديلات."},
+    o:{en:"Confirm the cancellation, or continue and revise.",ar:"أكّد الإلغاء، أو تابع وعدّل."}},
+  ready_to_publish:{
+    d:{en:"Approved by the client — final publishing details.",ar:"اعتمده العميل — تفاصيل النشر النهائية."},
+    n:{en:"Publish → Published & archived (point of no return).",ar:"نشر ← تم النشر والأرشفة (نقطة اللاعودة)."},
+    o:{en:"Set caption/channel and Publish.",ar:"حدّد العنوان/القناة وانشُر."}},
+  published:{ d:{en:"Published & archived — permanent record.",ar:"تم النشر والأرشفة — سجل دائم."}, n:{en:"—",ar:"—"}, o:{en:"",ar:""}},
+  cancelled:{ d:{en:"Cancelled / rejected — task closed, reason recorded.",ar:"ملغى / مرفوض — أُغلق الطلب، السبب مسجّل."}, n:{en:"—",ar:"—"}, o:{en:"",ar:""}},
+};
+
+/* demo client directory — selecting one auto-fills the request form */
+const CLIENTS = [
+  { name:"Ministry of Transport",            contact:"Aisha Al-Dosari", phone:"+973 3900 1122", email:"press@mot.gov.bh",       location:"Sakhir, Bahrain",            lat:26.0,    lng:50.62 },
+  { name:"Batelco",                          contact:"Omar Fikri",      phone:"+973 3611 5544", email:"marketing@batelco.com",   location:"Batelco HQ, Hamala",         lat:26.166,  lng:50.49 },
+  { name:"Bahrain International Circuit",     contact:"Hasan Ali",       phone:"+973 3211 0000", email:"pr@bic.com",              location:"BIC, Sakhir",                lat:26.032,  lng:50.51 },
+  { name:"Gulf Air",                         contact:"Layla Mansoor",   phone:"+973 3777 8899", email:"media@gulfair.com",       location:"Gulf Air HQ, Muharraq",      lat:26.27,   lng:50.63 },
+  { name:"Bahrain Tourism (BTEA)",           contact:"Yousif Rashed",   phone:"+973 3455 6677", email:"pr@btea.bh",              location:"Bab Al Bahrain, Manama",     lat:26.2361, lng:50.5711 },
+  { name:"National Bank of Bahrain (NBB)",   contact:"Mariam Saleh",    phone:"+973 3288 1200", email:"comms@nbbonline.com",     location:"NBB Tower, Manama",          lat:26.2372, lng:50.5876 },
+  { name:"Bahrain Economic Development Board",contact:"Khalid Nassar",  phone:"+973 3900 4455", email:"media@bahrainedb.com",    location:"Arcapita Building, Bahrain Bay", lat:26.245, lng:50.594 },
+  { name:"Al Watan — Editorial Desk",        contact:"Nadia Saleh",     phone:"+973 3300 7788", email:"desk@alwatannews.net",    location:"Al Watan Studio, Manama",    lat:26.2285, lng:50.586 },
+];
+
+/* form option lists */
+const COVERAGE=[["photos","cov_photos"],["video","cov_video"],["comprehensive","cov_comprehensive"]];
+const EVTYPE=[["paid","et_paid"],["free","et_free"],["editorial","et_editorial"],["vip","et_vip"]];
+function covLabel(v){ const f=COVERAGE.find(x=>x[0]===v); return f?t(f[1]):(v||"—"); }
+function evtypeLabel(v){ const f=EVTYPE.find(x=>x[0]===v); return f?t(f[1]):(v||"—"); }
+function fmtBytes(n){ if(!n&&n!==0) return ""; if(n<1024) return n+" B"; if(n<1048576) return (n/1024).toFixed(0)+" KB"; return (n/1048576).toFixed(1)+" MB"; }
+
+/* ---------- rosters ---------- */
+const ROSTER = {
+  producers:["Ali Hassan","Sara Ahmed","Khalid Rashid"],
+  editors:["Mohammed Khalid","Layla Omar"],
+  reporters:["Fatima Noor","Yousef Salem","Huda Kamal"],
+};
+const GROUPS = {
+  g1:["nnasser@alwatannews.net","m.nazeeh@alwatannews.net"],
+  g2:["zalmushaigri@alwatannews.net","aabdulla@alwatannews.net"],
+};
+/* individual staff accounts (each logs in on their own) */
+const STAFF = {};
+ROSTER.producers.forEach(n=>STAFF[n]="producer");
+ROSTER.editors.forEach(n=>STAFF[n]="editor");
+ROSTER.reporters.forEach(n=>STAFF[n]="reporter");
+
+/* demo credentials — every account uses the same demo password */
+const DEMO_PASS = "demo123";
+function userNameFor(id){ return ROLES.includes(id) ? id : id.toLowerCase().replace(/\s+/g,"."); }
+function findUserByCreds(u,p){
+  if(p!==DEMO_PASS) return null;
+  u=(u||"").trim().toLowerCase();
+  return [...ROLES, ...Object.keys(STAFF)].find(id=>userNameFor(id)===u) || null;
+}
+
+/* ---------- state ---------- */
+let state = load();
+
+function seed(){
+  const now = Date.now();
+  const mk = (o)=>Object.assign({
+    contact:"", phone:"", email:"", eventDate:"", eventDateTime:"",
+    coverage:"comprehensive", eventType:"editorial",
+    locationText:"", locationLat:null, locationLng:null, attachments:[], notes:"",
+    assign:{producers:[],editors:[],reporterNeeded:false,reporterChosen:false,reporter:null},
+    g1:false, g2:false, clientLink:null, comments:[], timeline:[]
+  }, o);
+  const reqs = [
+    mk({ id:1, title:"Bahrain Airshow — opening coverage", client:"Ministry of Transport",
+      contact:"Aisha Al-Dosari", phone:"+973 3900 1122", email:"press@mot.gov.bh",
+      coverage:"comprehensive", eventType:"vip", eventDate:"2026-08-03", eventDateTime:"2026-08-03T09:00",
+      due:"2026-08-05", locationText:"Sakhir Air Base, Bahrain", locationLat:26.0, locationLng:50.62,
+      notes:"Full opening-day coverage: aerial displays, VIP arrivals, 90-sec highlight reel + social cuts.",
+      requester:"requester", status:"internal_review", created:now-86400000*4,
+      assign:{producers:["Ali Hassan"],editors:["Mohammed Khalid"],reporterNeeded:true,reporterChosen:true,reporter:"Fatima Noor"},
+      g1:true, g2:false,
+      timeline:[
+        tl("requester","Submitted the request.","قدّم الطلب.", now-86400000*4),
+        tl("marketing","Approved — moved to Head.","موافقة — أُحيل للرئيس.", now-86400000*4+3600000),
+        tl("head","Approved & assigned team.","موافقة وتعيين الفريق.", now-86400000*3),
+        tl("team","Editing done — sent to internal review.","انتهى المونتاج — أُرسل للمراجعة الداخلية.", now-3600000*6),
+        tl("review1","Group 1 approved.","وافقت المجموعة ١.", now-3600000*2),
+      ]}),
+    mk({ id:2, title:"Ramadan brand promo", client:"Batelco",
+      contact:"Omar Fikri", phone:"+973 3611 5544", email:"marketing@batelco.com",
+      coverage:"video", eventType:"paid", eventDate:"2026-08-10", eventDateTime:"2026-08-10T18:00",
+      due:"2026-08-12", locationText:"Batelco HQ, Hamala", locationLat:26.166, locationLng:50.49,
+      notes:"30-sec festive promo, Arabic VO, brand colors, 3 platform aspect ratios.",
+      requester:"requester", status:"editing", created:now-86400000*2,
+      assign:{producers:["Sara Ahmed"],editors:["Layla Omar"],reporterNeeded:false,reporterChosen:false,reporter:null},
+      timeline:[
+        tl("requester","Submitted the request.","قدّم الطلب.", now-86400000*2),
+        tl("marketing","Approved.","موافقة.", now-86400000*2+1800000),
+        tl("head","Approved & assigned team.","موافقة وتعيين الفريق.", now-86400000+3600000),
+        tl("team","Shooting done — moved to editing.","انتهى التصوير — انتقل للمونتاج.", now-3600000*5),
+      ]}),
+    mk({ id:3, title:"Interview — Minister of Industry", client:"Editorial Desk",
+      contact:"Nadia Saleh", phone:"+973 3300 7788", email:"desk@alwatannews.net",
+      coverage:"photos", eventType:"editorial", eventDate:"2026-08-18", eventDateTime:"2026-08-18T11:30",
+      due:"2026-08-20", locationText:"Al Watan Studio, Manama", locationLat:26.2285, locationLng:50.586,
+      notes:"20-min studio interview, 2-camera, lower-thirds, 3 short social clips.",
+      requester:"requester", status:"marketing_approval", created:now-3600000*3,
+      timeline:[ tl("requester","Submitted the request.","قدّم الطلب.", now-3600000*3) ]}),
+  ];
+  return { lang:"en", theme:"light", filter:"all", muted:false, currentUser:null, view:"login", activeReq:null, notiOpen:false,
+    seq:4, requests:reqs, notifications:[
+      noti("marketing",3,"New request awaiting your approval.","طلب جديد بانتظار موافقتك."),
+      noti("review1",1,"A request is awaiting internal review.","طلب بانتظار المراجعة الداخلية."),
+      noti("review2",1,"A request is awaiting internal review.","طلب بانتظار المراجعة الداخلية."),
+    ]};
+}
+function tl(actor,en,ar,time){ return {actor, en, ar, time: time||Date.now()}; }
+function tlNote(actor,en,ar,note){ return {actor, en, ar, note:note||"", time:Date.now()}; }
+function noti(role,reqId,en,ar){ return {id:uid(), role, reqId, en, ar, read:false, time:Date.now()}; }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function load(){
+  try{ const raw=localStorage.getItem(LS_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  const s = seed(); try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} return s;
+}
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function resetDemo(){ localStorage.removeItem(LS_KEY); state=seed(); save(); render(); }
+
+/* ---------- helpers ---------- */
+// force Western/Latin digits even if Arabic-Indic (٠-٩ / ۰-۹) is entered or produced by the locale
+function toLatinDigits(s){
+  return String(s==null?"":s)
+    .replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-0x0660))
+    .replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-0x06F0));
+}
+function esc(s){ return toLatinDigits(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+// Arabic month names but always Latin numerals (…-u-nu-latn)
+function fmtDate(ts){ const d=new Date(ts); return d.toLocaleString(state.lang==="ar"?"ar-BH-u-nu-latn":"en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
+function fmtDay(s){ if(!s) return "—"; const d=new Date(s); return d.toLocaleDateString(state.lang==="ar"?"ar-BH-u-nu-latn":"en-GB",{day:"2-digit",month:"short",year:"numeric"}); }
+function todayISO(){ const d=new Date(); const l=new Date(d.getTime()-d.getTimezoneOffset()*60000); return l.toISOString().slice(0,10); }
+function refOf(rq){ return "VPR-"+new Date(rq.created).getFullYear()+"-"+String(rq.id).padStart(4,"0"); }
+function reqById(id){ return state.requests.find(r=>r.id===id); }
+function myRole(){ return state.currentUser; }
+function isOwner(req, uid){
+  const kinds = STATUS[req.status].owner || [];
+  const k = kindOf(uid);
+  if(!kinds.includes(k)) return false;
+  if(k==="producer") return req.assign.producers.includes(uid);
+  if(k==="editor")   return req.assign.editors.includes(uid);
+  if(k==="reporter") return req.assign.reporter===uid;
+  return true; // org roles
+}
+// resolve current owners of a request to concrete user ids (for notifications)
+function ownersOf(req){
+  const out=[];
+  (STATUS[req.status].owner||[]).forEach(k=>{
+    if(k==="producer") out.push(...req.assign.producers);
+    else if(k==="editor") out.push(...req.assign.editors);
+    else if(k==="reporter"){ if(req.assign.reporter) out.push(req.assign.reporter); }
+    else out.push(k);
+  });
+  return [...new Set(out)];
+}
+function notifyOwners(req,en,ar){ ownersOf(req).forEach(uid=>pushNoti(uid,req,en,ar)); }
+function ownerLabel(req){
+  const ids = ownersOf(req);
+  if(ids.length) return ids.map(roleName).join(" / ");
+  return (STATUS[req.status].owner||[]).map(k=>ROLE_LABEL[k]?ROLE_LABEL[k][state.lang]:(KIND_LABEL[k]?KIND_LABEL[k][state.lang]:k)).join(" / ")||"—";
+}
+function guidanceCard(req, role){
+  const g=STAGE_GUIDE[req.status]; if(!g) return "";
+  const done = req.status==="published"||req.status==="cancelled";
+  const mine = isOwner(req, role);
+  const isClient = role==="client";
+  let cls = done ? "" : (mine ? "you" : "wait");
+  let todoRow="";
+  if(!done){
+    let todo;
+    if(mine) todo = `<span class="youdo">➡ ${esc(g.o[state.lang])}</span>`;
+    else if(isClient) todo = `<span class="muted">${esc(t("g_client_wait"))}</span>`;
+    else todo = `<span class="muted">${esc(t("g_waiting"))}: <b>${esc(ownerLabel(req))}</b></span>`;
+    todoRow = `<div class="grow"><span class="tagk">${esc(t("g_todo"))}</span>${todo}</div>`;
+  }
+  const nextRow = (!isClient && g.n[state.lang]!=="—")
+    ? `<div class="grow"><span class="tagk">${esc(t("g_next"))}</span><span dir="auto">${esc(g.n[state.lang])}</span></div>` : "";
+  return `<div class="guide ${cls}">
+     <div class="lead">📍 ${esc(statusLabel(req.status))}</div>
+     <div class="grow"><span class="tagk">${esc(t("g_here"))}</span><span dir="auto">${esc(g.d[state.lang])}</span></div>
+     ${nextRow}
+     ${todoRow}
+   </div>`;
+}
+function unreadCount(){ const r=myRole(); return state.notifications.filter(n=>n.role===r && !n.read).length; }
+function addTl(req,en,ar,note){ req.timeline.push(tlNote(myRole(),en,ar,note)); }
+function pushNoti(role,req,en,ar){ state.notifications.push(noti(role,req.id,en,ar)); }
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  document.documentElement.lang = state.lang;
+  document.documentElement.dir  = state.lang==="ar" ? "rtl" : "ltr";
+  document.documentElement.dataset.theme = state.theme || "light";
+  renderTopbar();
+  const app = document.getElementById("app");
+  if(!state.currentUser){ app.innerHTML = viewLogin(); bindLogin(); return; }
+  if(state.view==="new"){ app.innerHTML = viewNew(); bindNew(); return; }
+  if(state.view==="detail"){ app.innerHTML = viewDetail(); bindDetail(); return; }
+  if(state.view==="archive"){ app.innerHTML = viewList(true); bindList(); return; }
+  app.innerHTML = viewList(false); bindList();
+}
+
+function langSeg(){
+  return `<div class="seg" id="langSeg">
+     <button data-lang="en" class="${state.lang==="en"?"on":""}">EN</button>
+     <button data-lang="ar" class="${state.lang==="ar"?"on":""}">ع</button>
+   </div>`;
+}
+function themeBtn(){ return `<button class="icon-btn" id="themeBtn" title="Light / dark">${state.theme==="dark"?"☀️":"🌙"}</button>`; }
+function bindCommonTop(){
+  document.querySelectorAll("#langSeg [data-lang]").forEach(b=>b.onclick=()=>{ state.lang=b.dataset.lang; save(); render(); });
+  const th=document.getElementById("themeBtn");
+  if(th) th.onclick=()=>{ state.theme = state.theme==="dark"?"light":"dark"; save(); render(); };
+}
+function renderTopbar(){
+  const tb=document.getElementById("topbar");
+  if(!state.currentUser){
+    tb.innerHTML =
+      `<div class="topbar">
+        <div class="logo"><span class="dot"></span> Al Watan · <span style="opacity:.8">${esc(t("app_title"))}</span></div>
+        <div class="spacer"></div>
+        ${langSeg()}
+        ${themeBtn()}
+        <button id="resetBtn">${esc(t("reset"))}</button>
+      </div>`;
+    document.getElementById("resetBtn").onclick=resetDemo;
+    bindCommonTop();
+    return;
+  }
+  const r=myRole();
+  const opt = x=>`<option value="${esc(x)}" ${x===r?"selected":""}>${esc(roleName(x))}</option>`;
+  const roleOpts =
+    `<optgroup label="${esc(t("org_roles"))}">${ROLES.map(opt).join("")}</optgroup>`+
+    `<optgroup label="${esc(t("team_members"))}">${Object.keys(STAFF).map(opt).join("")}</optgroup>`;
+  const nav = (v,label)=>`<button class="navlink ${state.view===v?"active":""}" data-nav="${v}">${esc(label)}</button>`;
+  tb.innerHTML =
+    `<div class="topbar">
+       <div class="logo"><span class="dot"></span> Al Watan</div>
+       ${nav("list",t("nav_requests"))}
+       ${r==="requester"?nav("new",t("nav_new")):""}
+       ${nav("archive",t("nav_archive"))}
+       <div class="spacer"></div>
+       <div class="bell">
+         <button id="bellBtn">${state.muted?"🔕":"🔔"} ${esc(t("notifications"))}${(!state.muted&&unreadCount())?`<span class="badge">${unreadCount()}</span>`:""}</button>
+         ${state.notiOpen?notiPop():""}
+       </div>
+       <span class="small" style="opacity:.85">${esc(t("you_are"))}:</span>
+       <select id="roleSel" title="${esc(t("switch_user"))}">${roleOpts}</select>
+       ${langSeg()}
+       ${themeBtn()}
+       <button id="logoutBtn">${esc(t("logout"))}</button>
+     </div>`;
+  tb.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{ state.view=b.dataset.nav; state.notiOpen=false; save(); render(); });
+  document.getElementById("bellBtn").onclick=()=>{ state.notiOpen=!state.notiOpen; render(); };
+  document.getElementById("roleSel").onchange=e=>{ state.currentUser=e.target.value; state.view="list"; state.notiOpen=false; save(); render(); };
+  document.getElementById("logoutBtn").onclick=()=>{ state.currentUser=null; state.view="login"; state.notiOpen=false; save(); render(); };
+  bindCommonTop();
+  if(state.notiOpen){
+    tb.querySelectorAll("[data-noti]").forEach(el=>el.onclick=()=>{
+      const n=state.notifications.find(x=>x.id===el.dataset.noti); if(n){ n.read=true; state.activeReq=n.reqId; state.view="detail"; }
+      state.notiOpen=false; save(); render();
+    });
+    tb.querySelectorAll("[data-noti-x]").forEach(el=>el.onclick=(e)=>{
+      e.stopPropagation();
+      state.notifications = state.notifications.filter(x=>x.id!==el.dataset.notiX);
+      save(); render();
+    });
+    const mr=document.getElementById("markReadBtn");
+    if(mr) mr.onclick=()=>{ state.notifications.forEach(n=>{ if(n.role===myRole()) n.read=true; }); save(); render(); };
+    const ca=document.getElementById("clearAllBtn");
+    if(ca) ca.onclick=()=>{ state.notifications = state.notifications.filter(n=>n.role!==myRole()); save(); render(); };
+    const mu=document.getElementById("muteBtn");
+    if(mu) mu.onclick=()=>{ state.muted=!state.muted; save(); render(); };
+  }
+}
+function notiPop(){
+  const r=myRole();
+  const mine=state.notifications.filter(n=>n.role===r).slice().reverse();
+  const head=`<div class="noti-head">
+     <b>${esc(t("notifications"))}</b>
+     <span class="noti-actions">
+       <button class="noti-btn" id="muteBtn">${state.muted?("🔕 "+esc(t("unmute_noti"))):("🔔 "+esc(t("mute_noti")))}</button>
+       ${mine.length?`<button class="noti-btn" id="markReadBtn">${esc(t("mark_read"))}</button>
+       <button class="noti-btn danger" id="clearAllBtn">${esc(t("clear_all"))}</button>`:""}
+     </span>
+   </div>`;
+  const body = !mine.length
+    ? `<div class="empty">${esc(t("no_noti"))}</div>`
+    : mine.map(n=>{ const rq=reqById(n.reqId);
+        return `<div class="noti-item ${n.read?"":"unread"}">
+          <div class="noti-x" data-noti-x="${n.id}" title="${esc(t("clear_all"))}">✕</div>
+          <div data-noti="${n.id}" style="cursor:pointer">
+            <div>${esc(n[state.lang])}</div>
+            <div class="small muted">${rq?esc(refOf(rq)):("#"+n.reqId)} · ${rq?esc(rq.title):""} · ${esc(fmtDate(n.time))}</div>
+          </div>
+        </div>`;
+      }).join("");
+  return `<div class="noti-pop">${head}${body}</div>`;
+}
+function toggleLang(){ state.lang = state.lang==="en"?"ar":"en"; save(); render(); }
+
+/* ---------- Login ---------- */
+function viewLogin(){
+  const acct = id=>{
+    const isRole=ROLES.includes(id);
+    const ic  = isRole?ROLE_LABEL[id].ic:KIND_LABEL[STAFF[id]].ic;
+    const name= isRole?roleName(id):id;
+    const sub = isRole?roleName(id):KIND_LABEL[STAFF[id]][state.lang];
+    const primary = isRole?name:id;      // top line
+    const secondary = isRole?roleHint(id):KIND_LABEL[STAFF[id]][state.lang];
+    return `<button class="acct" data-fill="${esc(userNameFor(id))}">
+        <span class="avatar" style="background:${avatarBg(id)}">${ic}</span>
+        <span style="min-width:0">
+          <span class="nm" dir="auto">${esc(primary)}</span>
+          <div class="rl" dir="auto">${esc(secondary)}</div>
+          <div class="un">👤 ${esc(userNameFor(id))}</div>
+        </span>
+      </button>`;
+  };
+  return `<div class="auth">
+    <div class="auth-card">
+      <div class="auth-hero">
+        <div class="auth-emblem">📰</div>
+        <h1>${esc(state.lang==="ar"?"صحيفة الوطن":"Al Watan")}</h1>
+        <p>${esc(t("sys_name"))}</p>
+      </div>
+      <div class="auth-body">
+        <div class="flabel">${esc(t("username"))}</div>
+        <div class="field"><span class="ic">👤</span>
+          <input type="text" id="lg_user" autocomplete="off" placeholder="${esc(t("username"))}"></div>
+        <div class="flabel">${esc(t("password"))}</div>
+        <div class="field"><span class="ic">🔒</span>
+          <input type="password" id="lg_pass" autocomplete="off" placeholder="${esc(t("password"))}"></div>
+        <button class="btn primary" id="lg_btn">${esc(t("sign_in"))}</button>
+        <div id="lg_err" class="small" style="color:var(--cancelled);margin-top:10px;text-align:center"></div>
+        <div class="pass-hint">🔑 ${esc(t("demo_pass_hint"))}</div>
+      </div>
+    </div>
+
+    <div class="accounts">
+      <div class="acct-title">${esc(t("quick_login"))}</div>
+      <div class="acct-title" style="margin-top:14px;color:var(--brand2)">${esc(t("org_roles"))}</div>
+      <div class="acct-grid">${ROLES.map(acct).join("")}</div>
+      <div class="acct-title" style="margin-top:16px;color:var(--brand2)">${esc(t("team_members"))}</div>
+      <div class="small muted" style="margin:2px 0">${esc(t("team_note"))}</div>
+      <div class="acct-grid">${Object.keys(STAFF).map(acct).join("")}</div>
+    </div>
+  </div>`;
+}
+function roleHint(r){
+  const h={
+    requester:{en:"Creates & submits requests",ar:"ينشئ الطلبات ويرسلها"},
+    marketing:{en:"First approval",ar:"الموافقة الأولى"},
+    head:{en:"Final approval · assigns team · routing",ar:"الموافقة النهائية · تعيين الفريق · التوجيه"},
+    journal:{en:"Selects reporters / presenters",ar:"يختار المراسلين / المقدّمين"},
+    team:{en:"Shooting · editing · publishing",ar:"التصوير · المونتاج · النشر"},
+    review1:{en:"Internal review — Group 1",ar:"المراجعة الداخلية — مجموعة ١"},
+    review2:{en:"Internal review — Group 2",ar:"المراجعة الداخلية — مجموعة ٢"},
+    client:{en:"Reviews & approves the final video",ar:"يراجع الفيديو النهائي ويعتمده"},
+  }[r]; return h?h[state.lang]:"";
+}
+function bindLogin(){
+  const err=document.getElementById("lg_err");
+  const doLogin=()=>{
+    const u=document.getElementById("lg_user").value;
+    const p=document.getElementById("lg_pass").value;
+    const id=findUserByCreds(u,p);
+    if(!id){ err.textContent=t("bad_creds"); return; }
+    state.currentUser=id; state.view="list"; state.filter="all"; save(); render();
+  };
+  document.getElementById("lg_btn").onclick=doLogin;
+  document.getElementById("lg_pass").addEventListener("keydown",e=>{ if(e.key==="Enter") doLogin(); });
+  document.querySelectorAll("[data-fill]").forEach(b=>b.onclick=()=>{
+    document.getElementById("lg_user").value=b.dataset.fill;
+    document.getElementById("lg_pass").value=DEMO_PASS;
+    err.textContent="";
+    document.getElementById("lg_btn").focus();
+  });
+}
+
+/* ---------- New request ---------- */
+function viewNew(){
+  const editing = !!state.editReq;
+  const rq = editing ? reqById(state.editReq) : null;
+  const val = f => (rq && rq[f]!=null) ? esc(rq[f]) : "";
+  const selOpts = (list,cur)=> list.map(([v,lbl])=>`<option value="${v}" ${cur===v?"selected":""}>${esc(t(lbl))}</option>`).join("");
+  const lbl = (k,req)=>`<label class="f">${esc(t(k))}${req?` <span class="req-star">*</span>`:""}</label>`;
+  const attachList = (rq&&rq.attachments&&rq.attachments.length)
+     ? `<div class="attach-list">${rq.attachments.map(a=>`<span class="attach-chip">📎 ${esc(a.name)} <span class="muted">${esc(fmtBytes(a.size))}</span></span>`).join("")}</div>` : "";
+  return `<div class="wrap"><div class="card" style="padding:22px 24px">
+    <h1>${esc(editing?t("edit_h"):t("new_h"))}</h1>
+    <div class="note" style="margin-top:8px">${esc(t("smartform_note"))}</div>
+
+    ${lbl("f_select_client",0)}
+    <select class="f" id="n_clientPick">
+      <option value="">${esc(t("client_pick_none"))}</option>
+      ${CLIENTS.map((c,i)=>`<option value="${i}">${esc(c.name)}</option>`).join("")}
+    </select>
+    <div class="small muted" style="margin-top:4px">${esc(t("select_client_hint"))}</div>
+
+    ${lbl("f_title",1)}
+    <input type="text" id="n_title" value="${val("title")}" placeholder="${esc(t("f_title"))}">
+
+    <div class="form-grid">
+      <div>${lbl("f_client",1)}<input type="text" id="n_client" value="${val("client")}"></div>
+      <div>${lbl("f_contact",0)}<input type="text" id="n_contact" value="${val("contact")}"></div>
+      <div>${lbl("f_phone",0)}<input type="tel" id="n_phone" value="${val("phone")}"></div>
+      <div>${lbl("f_email",0)}<input type="email" id="n_email" value="${val("email")}"></div>
+      <div>${lbl("f_coverage",1)}<select class="f" id="n_coverage">${selOpts(COVERAGE, rq?rq.coverage:"comprehensive")}</select></div>
+      <div>${lbl("f_event_type",1)}<select class="f" id="n_eventType">${selOpts(EVTYPE, rq?rq.eventType:"editorial")}</select></div>
+      <div>${lbl("f_event_date",0)}<input type="date" id="n_eventDate" min="${todayISO()}" value="${val("eventDate")}"></div>
+      <div>${lbl("f_event_dt",0)}<input type="datetime-local" id="n_eventDateTime" min="${todayISO()}T00:00" value="${val("eventDateTime")}"></div>
+      <div>${lbl("f_delivery",1)}<input type="date" id="n_due" min="${todayISO()}" value="${val("due")}"></div>
+    </div>
+
+    ${lbl("f_location",0)}
+    <input type="text" id="n_locationText" value="${val("locationText")}" placeholder="${esc(t("f_location_ph"))}">
+    <div class="map-hint small muted">🗺️ ${esc(t("map_hint"))} <span id="n_coords" class="refchip"></span></div>
+    <div id="n_map" class="map-box"></div>
+
+    <label class="chk-row" for="n_reporter">
+      <input type="checkbox" id="n_reporter" ${rq&&rq.assign&&rq.assign.reporterNeeded?"checked":""}>
+      <span>🎤 ${esc(t("f_reporter_q"))}</span>
+    </label>
+
+    ${lbl("f_notes",0)}
+    <textarea id="n_notes" placeholder="${esc(t("f_notes"))}">${val("notes")}</textarea>
+
+    ${lbl("f_attach",0)}
+    <div class="small muted" style="margin-bottom:6px">${esc(t("f_attach_hint"))}</div>
+    <input type="file" id="n_attach" multiple>
+    ${attachList}
+
+    ${editing?`${lbl("edit_note_l",0)}<textarea id="n_note" placeholder="${esc(t("edit_note_l"))}"></textarea>`:""}
+
+    <div class="btnrow" style="margin-top:16px">
+      <button class="btn primary" id="n_submit">${esc(editing?t("save_resubmit"):t("submit_req"))}</button>
+      <button class="btn" id="n_cancel">${esc(t("cancel"))}</button>
+    </div>
+    <div id="n_err" class="small" style="color:var(--cancelled);margin-top:8px"></div>
+  </div></div>`;
+}
+let _formLoc = {lat:null,lng:null};
+let _leafMap=null, _leafMarker=null, _setCoordsFn=null;
+function initFormMap(rq){
+  const el=document.getElementById("n_map"); if(!el) return;
+  _formLoc = (rq && rq.locationLat!=null) ? {lat:rq.locationLat,lng:rq.locationLng} : {lat:null,lng:null};
+  _leafMap=null; _leafMarker=null;
+  const coordsEl=document.getElementById("n_coords");
+  const setCoords=(lat,lng)=>{ _formLoc={lat:+lat.toFixed(5),lng:+lng.toFixed(5)}; if(coordsEl) coordsEl.textContent=`📍 ${_formLoc.lat}, ${_formLoc.lng}`; };
+  _setCoordsFn=setCoords;
+  if(typeof L==="undefined"){
+    el.innerHTML=`<div class="map-fallback">${esc(state.lang==="ar"?"الخريطة غير متاحة دون اتصال — استخدم حقل النص.":"Map unavailable offline — use the text field above.")}</div>`;
+    return;
+  }
+  const sLat = _formLoc.lat!=null?_formLoc.lat:26.2285, sLng=_formLoc.lng!=null?_formLoc.lng:50.586;
+  const map=L.map(el).setView([sLat,sLng], _formLoc.lat!=null?14:10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+  _leafMarker = _formLoc.lat!=null ? L.marker([sLat,sLng]).addTo(map) : null;
+  if(_formLoc.lat!=null) setCoords(sLat,sLng);
+  map.on('click', e=>{
+    if(_leafMarker) _leafMarker.setLatLng(e.latlng); else _leafMarker=L.marker(e.latlng).addTo(map);
+    setCoords(e.latlng.lat, e.latlng.lng);
+  });
+  _leafMap=map;
+  setTimeout(()=>map.invalidateSize(), 80);
+}
+function formSetLocation(lat,lng){
+  if(_setCoordsFn) _setCoordsFn(lat,lng);
+  if(_leafMap){
+    if(_leafMarker) _leafMarker.setLatLng([lat,lng]); else _leafMarker=L.marker([lat,lng]).addTo(_leafMap);
+    _leafMap.setView([lat,lng],14);
+  }
+}
+// read uploaded files → {name,size,type,url}. Embed the data URL for smaller files
+// so it can be previewed and survive a reload (localStorage has limited space).
+const EMBED_LIMIT = 2600000; // ~2.6 MB
+function readFiles(fileList){
+  return Promise.all([...fileList].map(f=>new Promise(res=>{
+    const meta={name:f.name, size:f.size, type:f.type||""};
+    if(f.size>EMBED_LIMIT){ res(meta); return; }
+    const r=new FileReader();
+    r.onload=()=>{ meta.url=r.result; res(meta); };
+    r.onerror=()=>res(meta);
+    r.readAsDataURL(f);
+  })));
+}
+function bindNew(){
+  const rqEdit = state.editReq ? reqById(state.editReq) : null;
+  initFormMap(rqEdit);
+  const cp=document.getElementById("n_clientPick");
+  if(cp) cp.onchange=()=>{
+    const c=CLIENTS[+cp.value]; if(!c) return;
+    const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v||""; };
+    set("n_client",c.name); set("n_contact",c.contact); set("n_phone",c.phone);
+    set("n_email",c.email); set("n_locationText",c.location);
+    if(c.lat!=null) formSetLocation(c.lat,c.lng);
+  };
+  document.getElementById("n_cancel").onclick=()=>{ state.editReq=null; state.view="list"; save(); render(); };
+  document.getElementById("n_submit").onclick=async ()=>{
+    const g=id=>{const el=document.getElementById(id); return el?el.value.trim():"";};
+    const err=document.getElementById("n_err");
+    const title=g("n_title"), client=g("n_client"), due=g("n_due");
+    const coverage=document.getElementById("n_coverage").value, eventType=document.getElementById("n_eventType").value;
+    const contact=g("n_contact"), phone=g("n_phone"), email=g("n_email");
+    const eventDate=g("n_eventDate"), eventDateTime=g("n_eventDateTime");
+    const locationText=g("n_locationText"), notes=g("n_notes");
+    const reporterNeeded=document.getElementById("n_reporter").checked;
+    const files=await readFiles(document.getElementById("n_attach").files||[]);
+    if(!title||!client||!due){
+      err.textContent = state.lang==="ar"?"الرجاء تعبئة الحقول المطلوبة (*).":"Please fill the required fields (*).";
+      return;
+    }
+    const past=d=> d && d.slice(0,10) < todayISO();
+    if(past(due)||past(eventDate)||past(eventDateTime)){
+      err.textContent = state.lang==="ar"?"لا يمكن اختيار تاريخ قبل اليوم.":"Dates cannot be earlier than today.";
+      return;
+    }
+    const fields={ title,client,contact,phone,email,eventDate,eventDateTime,coverage,eventType,
+      due,locationText,locationLat:_formLoc.lat,locationLng:_formLoc.lng,notes };
+
+    if(state.editReq){
+      const rq=reqById(state.editReq); const note=g("n_note");
+      Object.assign(rq, fields);
+      rq.attachments=(rq.attachments||[]).concat(files);
+      rq.assign.reporterNeeded=reporterNeeded;
+      if(!reporterNeeded){ rq.assign.reporterChosen=false; rq.assign.reporter=null; }
+      state.activeReq=rq.id; state.editReq=null;
+      const cu=state.currentUser; state.currentUser="requester";
+      addTl(rq,"Edited & resubmitted the request.","تم تعديل الطلب وإعادة إرساله.",note);
+      state.currentUser=cu;
+      rq.status="marketing_approval";
+      pushNoti("marketing", rq, "A revised request awaits your approval.","طلب مُعدّل بانتظار موافقتك.");
+      state.view="detail"; save(); render(); return;
+    }
+    const r=Object.assign({ id:state.seq++, requester:"requester", status:"marketing_approval", created:Date.now(),
+      attachments:files,
+      assign:{producers:[],editors:[],reporterNeeded, reporterChosen:false, reporter:null},
+      g1:false,g2:false,clientLink:null,comments:[],
+      timeline:[tl("requester","Submitted the request.","قدّم الطلب.")] }, fields);
+    state.requests.push(r);
+    pushNoti("marketing", r, "New request awaiting your approval.","طلب جديد بانتظار موافقتك.");
+    state.activeReq=r.id; state.view="detail"; save(); render();
+  };
+}
+
+/* ---------- List ---------- */
+const FILTERS = {
+  all:        ()=>true,
+  approvals:  rq=>["marketing_approval","changes_requester","head_approval","changes_marketing","assign_team","journal_selection"].includes(rq.status),
+  production: rq=>["in_progress","shooting","editing","internal_review","revision_routing"].includes(rq.status),
+  client:     rq=>["client_version","cancellation_request","ready_to_publish"].includes(rq.status),
+};
+function viewList(archive){
+  const r=myRole();
+  let base = state.requests.slice().sort((a,b)=>b.created-a.created);
+  if(archive) base=base.filter(x=>x.status==="published"||x.status==="cancelled");
+  else        base=base.filter(x=>x.status!=="published"&&x.status!=="cancelled");
+  // client sees only requests that reached client stage
+  if(r==="client") base=base.filter(x=>["client_version","ready_to_publish","published","cancelled"].includes(x.status));
+  // staff see only requests they are assigned to
+  if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.editors.includes(r)||x.assign.reporter===r);
+
+  // status filter tabs (active list only)
+  let tabsHtml="";
+  if(!archive){
+    const defs=[["all","tab_all"],["mine","tab_mine"],["approvals","tab_approvals"],["production","tab_production"],["client","tab_client"]];
+    const test=k=> k==="mine" ? (rq=>isOwner(rq,r)) : FILTERS[k];
+    if(!["all","mine","approvals","production","client"].includes(state.filter)) state.filter="all";
+    tabsHtml=`<div class="tabs">`+defs.map(([k,lbl])=>{
+      const c=base.filter(test(k)).length;
+      return `<button class="tab ${state.filter===k?"on":""}" data-filter="${k}">${esc(t(lbl))}<span class="cnt">${c}</span></button>`;
+    }).join("")+`</div>`;
+  }
+  const test=k=> k==="mine" ? (rq=>isOwner(rq,r)) : (FILTERS[k]||FILTERS.all);
+  let rows = archive ? base : base.filter(test(state.filter));
+
+  const title = archive? t("nav_archive"): t("nav_requests");
+  let body;
+  if(!rows.length){
+    body=`<div class="empty">${esc(archive?t("archived_empty"):t("no_requests"))}</div>`;
+  }else{
+    body = rows.map(rq=>{
+      const flag = isOwner(rq,r) ? `<span class="actionflag">⚡ ${esc(t("action_needed"))}</span>` : "";
+      return `<div class="reqrow" data-open="${rq.id}">
+        <div class="idcol">${esc(refOf(rq))}</div>
+        <div class="main">
+          <div class="t" dir="auto">${esc(rq.title)}</div>
+          <div class="small muted" dir="auto">${esc(t("client_l"))}: ${esc(rq.client)} · ${esc(covLabel(rq.coverage))} · ${esc(evtypeLabel(rq.eventType))} · ${esc(t("due_l"))}: ${esc(fmtDay(rq.due))}</div>
+        </div>
+        <div style="text-align:end;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <span class="st ${STATUS[rq.status].cls}">${esc(statusLabel(rq.status))}</span>
+          ${flag}
+        </div>
+      </div>`;
+    }).join("");
+  }
+  const newBtn = (r==="requester"&&!archive)?`<button class="btn primary" id="listNew">+ ${esc(t("nav_new"))}</button>`:"";
+  return `<div class="wrap">
+    <div class="list-head"><h1 style="margin:0;flex:1">${esc(title)}</h1>${newBtn}</div>
+    ${tabsHtml}
+    <div class="card">${body}</div>
+  </div>`;
+}
+function bindList(){
+  document.querySelectorAll("[data-filter]").forEach(el=>el.onclick=()=>{ state.filter=el.dataset.filter; save(); render(); });
+  document.querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>{ state.activeReq=+el.dataset.open; state.view="detail"; save(); render(); });
+  const nb=document.getElementById("listNew"); if(nb) nb.onclick=()=>{ state.view="new"; save(); render(); };
+}
+
+/* ---------- Detail ---------- */
+function viewDetail(){
+  const rq=reqById(state.activeReq); if(!rq){ state.view="list"; return viewList(false); }
+  const r=myRole();
+  const clientView = r==="client";
+  const step = STATUS[rq.status].step;
+
+  // stepper
+  const stepper = STEP_LABEL.map((s,i)=>{
+    const n=i+1; const cls = n<step?"done":(n===step?"on":"");
+    return `<div class="step ${cls}"><div class="num">${n}</div>${esc(s[state.lang])}</div>`;
+  }).join("");
+
+  // summary card (reused everywhere)
+  let assignLine="";
+  if(!clientView && (rq.assign.producers.length||rq.assign.editors.length||rq.assign.reporter)){
+    const parts=[];
+    if(rq.assign.producers.length) parts.push(`${t("producers")}: ${rq.assign.producers.join(", ")}`);
+    if(rq.assign.editors.length)   parts.push(`${t("editors")}: ${rq.assign.editors.join(", ")}`);
+    if(rq.assign.reporter)         parts.push(`${t("kind_reporter")}: ${rq.assign.reporter}`);
+    assignLine=`<div class="k">${esc(state.lang==="ar"?"الفريق":"Team")}</div><div class="v" dir="auto">${esc(parts.join(" · "))}</div>`;
+  }
+
+  const evWhen = rq.eventDateTime ? fmtDate(rq.eventDateTime) : (rq.eventDate?fmtDay(rq.eventDate):"—");
+  const locLink = (rq.locationLat!=null)
+    ? ` · <a href="https://www.openstreetmap.org/?mlat=${rq.locationLat}&mlon=${rq.locationLng}#map=15/${rq.locationLat}/${rq.locationLng}" target="_blank" rel="noopener">${esc(t("view_map"))} ↗</a>` : "";
+  const repRow = rq.assign.reporterNeeded
+    ? `<div class="k">${esc(t("kind_reporter"))}</div><div class="v" dir="auto">✅ ${esc(state.lang==="ar"?"مطلوب":"Required")}${(!clientView&&rq.assign.reporter)?` · ${esc(rq.assign.reporter)}`:""}</div>` : "";
+  const contactRows = clientView ? "" :
+    `${rq.contact?`<div class="k">${esc(t("f_contact"))}</div><div class="v" dir="auto">${esc(rq.contact)}</div>`:""}
+     ${rq.phone?`<div class="k">${esc(t("f_phone"))}</div><div class="v">${esc(rq.phone)}</div>`:""}
+     ${rq.email?`<div class="k">${esc(t("f_email"))}</div><div class="v">${esc(rq.email)}</div>`:""}`;
+
+  const summary=`<div class="summary">
+    <div class="sum-top">
+      <div>
+        <div class="small muted"><span class="refchip">${esc(refOf(rq))}</span> · ${esc(covLabel(rq.coverage))} · ${esc(evtypeLabel(rq.eventType))}</div>
+        <h1 dir="auto" style="margin-top:2px">${esc(rq.title)}</h1>
+      </div>
+      <span class="st ${STATUS[rq.status].cls}">${esc(statusLabel(rq.status))}</span>
+    </div>
+    <div class="kv">
+      <div class="k">${esc(t("client_l"))}</div><div class="v" dir="auto">${esc(rq.client)}</div>
+      ${contactRows}
+      <div class="k">${esc(t("f_coverage"))}</div><div class="v">${esc(covLabel(rq.coverage))}</div>
+      <div class="k">${esc(t("f_event_type"))}</div><div class="v">${esc(evtypeLabel(rq.eventType))}</div>
+      <div class="k">${esc(t("f_event_dt"))}</div><div class="v">${esc(evWhen)}</div>
+      <div class="k">${esc(t("f_delivery"))}</div><div class="v">${esc(fmtDay(rq.due))}</div>
+      ${rq.locationText||rq.locationLat!=null?`<div class="k">${esc(t("f_location"))}</div><div class="v" dir="auto">${esc(rq.locationText||"—")}${locLink}</div>`:""}
+      ${repRow}
+      ${clientView?"":`<div class="k">${esc(t("owner_l"))}</div><div class="v">${(STATUS[rq.status].owner||[]).map(roleName).join(" / ")||"—"}</div>`}
+      ${assignLine}
+    </div>
+    ${rq.notes?`<div class="brief" dir="auto"><b>${esc(t("f_notes"))}:</b> ${esc(rq.notes)}</div>`:""}
+    <div class="stepper">${stepper}</div>
+    ${rq.clientLink?`<div style="margin-top:12px"><div class="small muted">${esc(t("client_link_l"))}</div><div class="linkbox">${esc(rq.clientLink)}</div></div>`:""}
+  </div>`;
+
+  const media = attachmentsSection(rq);
+  const actions = renderActionPanel(rq, r);
+  const reviewInfo = (rq.status==="internal_review" && !clientView) ? reviewPanel(rq) : "";
+  const comments = clientView ? clientComments(rq) : commentPanel(rq);
+  const timeline = clientView ? "" : timelinePanel(rq);
+
+  return `<div class="wrap">
+    <button class="btn" id="backBtn" style="margin-bottom:14px">${esc(t("back"))}</button>
+    ${guidanceCard(rq, r)}
+    <div class="card">${summary}${media}${actions}${reviewInfo}${comments}${timeline}</div>
+    ${clientView?`<div class="note" style="margin-top:12px">${esc(t("client_only_note"))}</div>`:""}
+  </div>`;
+}
+
+function attachmentsSection(rq){
+  if(!rq.attachments || !rq.attachments.length) return "";
+  const items = rq.attachments.map(a=>{
+    const cap = `<span class="media-cap" dir="auto" title="${esc(a.name)}">${esc(a.name)}</span>`;
+    const ty = a.type||"";
+    if(a.url && ty.indexOf("image/")===0)
+      return `<a class="media-item" href="${a.url}" target="_blank" rel="noopener"><img src="${a.url}" alt="${esc(a.name)}">${cap}</a>`;
+    if(a.url && ty.indexOf("video/")===0)
+      return `<div class="media-item"><video src="${a.url}" controls preload="metadata"></video>${cap}</div>`;
+    if(a.url && ty.indexOf("audio/")===0)
+      return `<div class="media-item file"><span class="media-file">🎵</span><audio src="${a.url}" controls style="width:100%"></audio>${cap}</div>`;
+    const dl = a.url ? `href="${a.url}" download="${esc(a.name)}" target="_blank"` : "";
+    const note = a.url ? "" : ` · <span class="muted">${esc(t("attach_toobig"))}</span>`;
+    return `<a class="media-item file" ${dl}><span class="media-file">📄</span><span class="media-cap" dir="auto">${esc(a.name)} · ${esc(fmtBytes(a.size))}${note}</span></a>`;
+  }).join("");
+  return `<div class="section"><h2>${esc(t("f_attach"))} <span class="muted small">(${rq.attachments.length})</span></h2><div class="media-grid">${items}</div></div>`;
+}
+function renderActionPanel(rq, r){
+  const s=rq.status;
+  let inner="";
+
+  // Assign team (head)
+  if(r==="head" && s==="assign_team"){
+    inner = assignPanel(rq);
+  }
+  // Journal reporter selection
+  else if(r==="journal" && s==="journal_selection"){
+    inner = journalPanel(rq);
+  }
+  // Revision routing (head)
+  else if(r==="head" && s==="revision_routing"){
+    inner = `<h2>${esc(t("routing_h"))}</h2><div class="note">${esc(t("routing_note"))}</div>
+      <div class="btnrow" style="margin-top:12px">
+        <button class="btn blue" data-act="route_ip">${esc(t("restart_ip"))}</button>
+        <button class="btn blue" data-act="route_sh">${esc(t("restart_sh"))}</button>
+        <button class="btn blue" data-act="route_ed">${esc(t("restart_ed"))}</button>
+      </div>`;
+  }
+  else {
+    const btns = actionButtons(rq, r);
+    if(btns) inner = `<div class="btnrow">${btns}</div>`;
+  }
+  if(!inner) return "";
+  return `<div class="section">${inner}</div>`;
+}
+
+function actionButtons(rq, r){
+  const s=rq.status; const B=[];
+  const b=(act,label,cls)=>`<button class="btn ${cls||""}" data-act="${act}">${esc(t(label))}</button>`;
+
+  if(r==="marketing" && s==="marketing_approval"){ B.push(b("mk_approve","approve","good")); B.push(b("mk_changes","request_changes","warn")); }
+  if(r==="requester" && s==="changes_requester"){ B.push(b("re_resubmit","resubmit","primary")); }
+  if(r==="head" && s==="head_approval"){ B.push(b("hd_approve","approve","good")); B.push(b("hd_changes","request_changes","warn")); }
+  if(r==="marketing" && s==="changes_marketing"){ B.push(b("mk_forward","forward_head","good")); B.push(b("mk_toreq","send_requester","warn")); }
+  if(isStaff(r) && isOwner(rq,r) && ["in_progress","shooting","editing"].includes(s)){ B.push(b("tm_done","mark_done","primary")); }
+  if(r==="review1" && s==="internal_review"){ if(!rq.g1) B.push(b("r1_ok","approve_g1","good")); B.push(b("r1_ch","request_changes","warn")); }
+  if(r==="review2" && s==="internal_review"){ if(!rq.g2) B.push(b("r2_ok","approve_g2","good")); B.push(b("r2_ch","request_changes","warn")); }
+  if(r==="client" && s==="client_version"){ B.push(b("cl_ok","client_approve","good")); B.push(b("cl_ch","client_changes","warn")); B.push(b("cl_rej","client_reject","danger")); }
+  if(isStaff(r) && isOwner(rq,r) && s==="ready_to_publish"){ B.push(b("tm_publish","publish","primary")); }
+  if(r==="client" && s==="ready_to_publish"){ B.push(b("cl_final","final_change","warn")); B.push(b("cl_rej","client_reject","danger")); }
+  if(r==="head" && s==="cancellation_request"){ B.push(b("hd_confirm_cancel","confirm_cancel","danger")); B.push(b("hd_continue","continue_rout","good")); }
+
+  return B.join("");
+}
+
+function assignPanel(rq){
+  const chipSet=(key,list)=>list.map(name=>{
+    const sel=rq.assign[key].includes(name)?"sel":"";
+    return `<span class="chip ${sel}" data-pick="${key}|${esc(name)}">${esc(name)}</span>`;
+  }).join("");
+  return `<h2>${esc(t("assign_h"))}</h2>
+    <div class="small muted">${esc(t("producers"))}</div>
+    <div class="chips">${chipSet("producers",ROSTER.producers)}</div>
+    <div class="small muted" style="margin-top:12px">${esc(t("editors"))}</div>
+    <div class="chips">${chipSet("editors",ROSTER.editors)}</div>
+    <label class="f" style="display:flex;align-items:center;gap:8px;margin-top:16px;font-weight:600">
+      <input type="checkbox" id="repNeeded" ${rq.assign.reporterNeeded?"checked":""} style="width:auto">
+      ${esc(t("need_reporter"))}
+    </label>
+    <div id="repRuleBox" class="${rq.assign.reporterNeeded?"":"hidden"}">
+      <div class="note">${esc(t("reporter_rule"))}</div>
+      ${rq.assign.reporterChosen?`<div class="small" style="color:var(--assign);font-weight:700;margin-top:8px">✔ ${esc(t("reporter_chosen"))}: ${esc(rq.assign.reporter)}</div>`:""}
+    </div>
+    <div class="btnrow" style="margin-top:16px">
+      ${(rq.assign.reporterNeeded && !rq.assign.reporterChosen)
+        ? `<button class="btn blue" id="reqJournal">${esc(t("request_journal"))}</button>`
+        : `<button class="btn good" id="finalizeTeam">${esc(t("finalize_team"))}</button>`}
+    </div>`;
+}
+function journalPanel(rq){
+  return `<h2>${esc(t("journal_h"))}</h2>
+    <div class="small muted">${esc(t("journal_pick"))}</div>
+    <div class="chips" id="repChips">
+      ${ROSTER.reporters.map(n=>`<span class="chip ${rq.assign.reporter===n?"sel":""}" data-rep="${esc(n)}">${esc(n)}</span>`).join("")}
+    </div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn good" id="confirmRep" ${rq.assign.reporter?"":"disabled"}>${esc(t("confirm_reporter"))}</button>
+    </div>`;
+}
+function reviewPanel(rq){
+  const line=(ok,label,members,gl)=>`
+    <div style="margin-bottom:10px">
+      <div style="font-weight:700">${esc(t(gl))} ${ok?`<span class="st done" style="padding:1px 8px">✔ ${esc(t(gl==="g1_l"?"g1_ok":"g2_ok"))}</span>`:`<span class="small muted">— ${esc(t("awaiting_g"))}</span>`}</div>
+      <div class="small muted">${members.join(" · ")}</div>
+    </div>`;
+  return `<div class="section">
+    <h2>${esc(t("review_groups"))}</h2>
+    ${line(rq.g1,"",GROUPS.g1,"g1_l")}
+    ${line(rq.g2,"",GROUPS.g2,"g2_l")}
+    <div class="note">${state.lang==="ar"?"يلزم موافقة عضو واحد من كل مجموعة. أي تعديل يعيد الطلب لكلتا المجموعتين.":"One approval from each group is required. Any revision returns the request to both groups."}</div>
+  </div>`;
+}
+function timelinePanel(rq){
+  const items = rq.timeline.slice().reverse().map(e=>`
+    <li><div class="who">${esc(roleName(e.actor))}</div>
+        <div dir="auto">${esc(e[state.lang])}</div>
+        ${e.note?`<div class="tl-note" dir="auto"><b>${esc(t("note_label"))}:</b> ${esc(e.note)}</div>`:""}
+        <div class="tm">${esc(fmtDate(e.time))}</div></li>`).join("");
+  return `<div class="section"><h2>${esc(t("timeline_l"))}</h2><ul class="tl">${items}</ul></div>`;
+}
+function commentPanel(rq){
+  const list = rq.comments.map(c=>`
+    <div class="cmt">
+      <div class="h"><span>${esc(roleName(c.role))} ${c.internal?`<span class="internal-tag">${esc(t("internal_only"))}</span>`:""}</span><span>${esc(fmtDate(c.time))}</span></div>
+      <div dir="auto">${esc(c.text)}</div>
+    </div>`).join("") || `<div class="small muted">—</div>`;
+  return `<div class="section"><h2>${esc(t("comments_l"))}</h2>${list}
+    <textarea id="cmtBox" placeholder="${esc(t("comment_ph"))}" style="margin-top:10px"></textarea>
+    <div class="btnrow" style="margin-top:8px"><button class="btn" id="cmtAdd">${esc(t("add_comment"))}</button></div>
+  </div>`;
+}
+function clientComments(rq){
+  // client sees only non-internal comments
+  const list = rq.comments.filter(c=>!c.internal).map(c=>`
+    <div class="cmt"><div class="h"><span>${esc(c.role==="client"?roleName("client"):"Al Watan")}</span><span>${esc(fmtDate(c.time))}</span></div>
+      <div dir="auto">${esc(c.text)}</div></div>`).join("") || `<div class="small muted">—</div>`;
+  return `<div class="section"><h2>${esc(t("comments_l"))}</h2>${list}
+    <textarea id="cmtBox" placeholder="${esc(t("comment_ph"))}" style="margin-top:10px"></textarea>
+    <div class="btnrow" style="margin-top:8px"><button class="btn" id="cmtAdd">${esc(t("add_comment"))}</button></div>
+  </div>`;
+}
+
+/* ---------- Detail bindings / actions ---------- */
+function bindDetail(){
+  const rq=reqById(state.activeReq); const r=myRole();
+  document.getElementById("backBtn").onclick=()=>{ state.view="list"; save(); render(); };
+
+  // generic action buttons (some require a note tied to the action)
+  const NOTE_ACTIONS={mk_changes:"note_t_changes",hd_changes:"note_t_changes",mk_toreq:"note_t_sendback",
+    r1_ch:"note_t_changes",r2_ch:"note_t_changes",cl_ch:"note_t_changes",cl_final:"note_t_final",
+    cl_rej:"note_t_reject",hd_confirm_cancel:"note_t_cancel",route_ip:"note_t_route",route_sh:"note_t_route",route_ed:"note_t_route"};
+  const REQUIRED=["cl_rej","hd_confirm_cancel"];
+  document.querySelectorAll("[data-act]").forEach(el=>el.onclick=()=>{
+    const act=el.dataset.act;
+    if(act==="re_resubmit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
+    if(NOTE_ACTIONS[act]){ askNote(t(NOTE_ACTIONS[act]), n=>doAction(act,rq,n), REQUIRED.includes(act)); return; }
+    doAction(act, rq);
+  });
+
+  // assign chips
+  document.querySelectorAll("[data-pick]").forEach(el=>el.onclick=()=>{
+    const [key,name]=el.dataset.pick.split("|");
+    const arr=rq.assign[key]; const i=arr.indexOf(name);
+    if(i>=0) arr.splice(i,1); else arr.push(name);
+    save(); render();
+  });
+  const rn=document.getElementById("repNeeded");
+  if(rn) rn.onchange=()=>{ rq.assign.reporterNeeded=rn.checked; if(!rn.checked){rq.assign.reporterChosen=false;rq.assign.reporter=null;} save(); render(); };
+  const rj=document.getElementById("reqJournal");
+  if(rj) rj.onclick=()=>{
+    addTl(rq,"Requested a reporter/presenter from the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
+             "طلب مراسلًا/مقدّمًا من مسؤول المحررين (نسخة إلى zalmushaigri@alwatannews.net).");
+    rq.status="journal_selection";
+    pushNoti("journal", rq, "A reporter/presenter selection is requested.","مطلوب اختيار مراسل/مقدّم.");
+    save(); render();
+  };
+  const ft=document.getElementById("finalizeTeam");
+  if(ft) ft.onclick=()=>{
+    if(!rq.assign.producers.length || !rq.assign.editors.length){
+      alert(state.lang==="ar"?"اختر منتجًا واحدًا ومونتيرًا واحدًا على الأقل.":"Pick at least one producer and one editor."); return;
+    }
+    addTl(rq,"Finalized the team — production started.","تم اعتماد الفريق — بدأ الإنتاج.");
+    rq.status="in_progress";
+    notifyOwners(rq,"You've been assigned — your stage (In progress) is ready.","تم تعيينك — مرحلتك (قيد التنفيذ) جاهزة.");
+    save(); render();
+  };
+
+  // journal reporter pick
+  document.querySelectorAll("[data-rep]").forEach(el=>el.onclick=()=>{
+    rq.assign.reporter=el.dataset.rep; save(); render();
+  });
+  const cr=document.getElementById("confirmRep");
+  if(cr) cr.onclick=()=>{
+    rq.assign.reporterChosen=true;
+    addTl(rq,"Selected reporter/presenter: "+rq.assign.reporter+".","تم اختيار المراسل/المقدّم: "+rq.assign.reporter+".");
+    rq.status="assign_team";
+    pushNoti("head", rq, "Reporter selected — finalize the team.","تم اختيار المراسل — اعتمد الفريق.");
+    save(); render();
+  };
+
+  // comments
+  const ca=document.getElementById("cmtAdd");
+  if(ca) ca.onclick=()=>{
+    const box=document.getElementById("cmtBox"); const txt=box.value.trim(); if(!txt) return;
+    rq.comments.push({role:r, text:txt, time:Date.now(), internal: r!=="client"});
+    save(); render();
+  };
+}
+
+function doAction(act, rq, note){
+  switch(act){
+    case "mk_approve":
+      addTl(rq,"Approved — moved to Head approval.","موافقة — أُحيل لموافقة الرئيس.");
+      rq.status="head_approval"; pushNoti("head",rq,"A request awaits your approval.","طلب بانتظار موافقتك."); break;
+    case "mk_changes":
+      addTl(rq,"Requested changes — sent back to Requester.","طلب تعديلات — أُعيد لمقدم الطلب.",note);
+      rq.status="changes_requester"; pushNoti("requester",rq,"Your request needs changes.","طلبك يحتاج إلى تعديلات."); break;
+    case "hd_approve":
+      addTl(rq,"Approved — moved to Assign team.","موافقة — الانتقال لتعيين الفريق.");
+      rq.status="assign_team"; break; // head himself acts next
+    case "hd_changes":
+      addTl(rq,"Requested changes — sent to Marketing (comment visible to Requester).","طلب تعديلات — أُرسل للتسويق (التعليق مرئي لمقدم الطلب).",note);
+      rq.status="changes_marketing";
+      pushNoti("marketing",rq,"Head requested changes.","طلب الرئيس تعديلات.");
+      pushNoti("requester",rq,"Head left a change comment on your request.","ترك الرئيس تعليق تعديل على طلبك."); break;
+    case "mk_forward":
+      addTl(rq,"Fixed & forwarded to Head approval.","تم التعديل والإرسال لموافقة الرئيس.");
+      rq.status="head_approval"; pushNoti("head",rq,"A request awaits your approval.","طلب بانتظار موافقتك."); break;
+    case "mk_toreq":
+      addTl(rq,"Sent back to Requester.","أُعيد لمقدم الطلب.",note);
+      rq.status="changes_requester"; pushNoti("requester",rq,"Your request needs changes.","طلبك يحتاج إلى تعديلات."); break;
+    case "tm_done": {
+      const next = rq.status==="in_progress"?"shooting":(rq.status==="shooting"?"editing":"internal_review");
+      if(next==="internal_review"){
+        rq.g1=false; rq.g2=false;
+        addTl(rq,"Editing done — sent to internal review.","انتهى المونتاج — أُرسل للمراجعة الداخلية.");
+        rq.status="internal_review";
+        pushNoti("review1",rq,"A request awaits internal review.","طلب بانتظار المراجعة الداخلية.");
+        pushNoti("review2",rq,"A request awaits internal review.","طلب بانتظار المراجعة الداخلية.");
+      }else{
+        addTl(rq,"Stage completed — moved to "+statusLabel(next)+".","اكتملت المرحلة — الانتقال إلى "+statusLabel(next)+".");
+        rq.status=next; notifyOwners(rq,"Next production stage is assigned to you.","المرحلة التالية مُسنَدة إليك.");
+      }
+      break; }
+    case "r1_ok":
+      rq.g1=true; addTl(rq,"Group 1 approved.","وافقت المجموعة ١."); checkReviewComplete(rq); break;
+    case "r2_ok":
+      rq.g2=true; addTl(rq,"Group 2 approved.","وافقت المجموعة ٢."); checkReviewComplete(rq); break;
+    case "r1_ch": case "r2_ch":
+      rq.g1=false; rq.g2=false;
+      addTl(rq,"Requested changes — routed to Production Head.","طلب تعديلات — أُحيل لرئيس الإنتاج.",note);
+      rq.status="revision_routing"; pushNoti("head",rq,"Internal review requested changes — pick restart stage.","طلبت المراجعة تعديلات — اختر مرحلة الاستئناف."); break;
+    case "route_ip": case "route_sh": case "route_ed": {
+      const map={route_ip:"in_progress",route_sh:"shooting",route_ed:"editing"};
+      const st=map[act]; rq.g1=false; rq.g2=false;
+      addTl(rq,"Revision routed — restart at "+statusLabel(st)+".","توجيه التعديل — الاستئناف من "+statusLabel(st)+".",note);
+      rq.status=st; notifyOwners(rq,"Revision assigned — please redo your stage.","تم إسناد تعديل — يرجى إعادة مرحلتك."); break; }
+    case "cl_ok":
+      addTl(rq,"Client approved the video.","اعتمد العميل الفيديو.");
+      rq.status="ready_to_publish"; notifyOwners(rq,"Client approved — ready to publish.","اعتمد العميل — جاهز للنشر."); break;
+    case "cl_ch":
+      addTl(rq,"Client requested changes — routed to Production Head.","طلب العميل تعديلات — أُحيل لرئيس الإنتاج.",note);
+      rq.status="revision_routing"; pushNoti("head",rq,"Client requested changes — pick restart stage.","طلب العميل تعديلات — اختر مرحلة الاستئناف."); break;
+    case "cl_final":
+      addTl(rq,"Client requested a final change — routed to Production Head.","طلب العميل تعديلًا أخيرًا — أُحيل لرئيس الإنتاج.",note);
+      rq.status="revision_routing"; pushNoti("head",rq,"Client requested a final change.","طلب العميل تعديلًا أخيرًا."); break;
+    case "cl_rej":
+      addTl(rq,"Client rejected — cancellation request raised.","رفض العميل — رُفع طلب إلغاء.",note);
+      rq.status="cancellation_request"; pushNoti("head",rq,"Client raised a cancellation request.","رفع العميل طلب إلغاء."); break;
+    case "tm_publish":
+      addTl(rq,"Published & archived — point of no return.","تم النشر والأرشفة — نقطة اللاعودة.");
+      rq.status="published"; break;
+    case "hd_confirm_cancel":
+      addTl(rq,"Cancellation confirmed — task closed (reason recorded).","تم تأكيد الإلغاء — أُغلق الطلب (السبب مسجّل).",note);
+      rq.status="cancelled"; break;
+    case "hd_continue":
+      addTl(rq,"Cancellation declined — continue to revision routing.","رُفض الإلغاء — المتابعة لتوجيه التعديلات.");
+      rq.status="revision_routing"; break;
+  }
+  save(); render();
+}
+function checkReviewComplete(rq){
+  if(rq.g1 && rq.g2){
+    rq.clientLink="https://portal.alwatannews.net/c/"+uid()+uid();
+    addTl(rq,"Both groups approved — client version shared.","وافقت المجموعتان — تمت مشاركة نسخة العميل.");
+    rq.status="client_version";
+    pushNoti("client",rq,"A video is ready for your review.","فيديو جاهز لمراجعتك.");
+  }
+}
+
+/* ---------- note modal (transient, not persisted) ---------- */
+function askNote(titleText, cb, required){
+  const ov=document.createElement("div"); ov.className="modal-ov";
+  ov.innerHTML=`<div class="modal">
+    <h2 style="margin-bottom:6px">${esc(titleText)}</h2>
+    <div class="small muted" style="margin-bottom:8px">${esc(t("note_change"))}</div>
+    <textarea id="noteTA" placeholder="${esc(t("filled_by_role"))}"></textarea>
+    <div class="btnrow" style="justify-content:flex-end;margin-top:12px">
+      <button class="btn" id="noteCancel">${esc(t("cancel"))}</button>
+      <button class="btn primary" id="noteOk">${esc(t("ok"))}</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const ta=ov.querySelector("#noteTA"); ta.focus();
+  const close=()=>ov.remove();
+  ov.addEventListener("click",e=>{ if(e.target===ov) close(); });
+  ov.querySelector("#noteCancel").onclick=close;
+  ov.querySelector("#noteOk").onclick=()=>{
+    const v=ta.value.trim();
+    if(required && !v){ ta.style.borderColor="var(--cancelled)"; ta.focus(); return; }
+    close(); cb(v);
+  };
+}
+
+/* ---------- boot ---------- */
+render();
+</script>
 </body>
 </html>
