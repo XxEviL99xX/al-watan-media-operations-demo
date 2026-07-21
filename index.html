@@ -558,6 +558,8 @@ const DICT = {
   field_sim:      {en:"simulated location (demo)", ar:"موقع تجريبي (عرض)"},
   field_locating: {en:"Getting your location…", ar:"جارٍ تحديد موقعك…"},
   field_you:      {en:"you", ar:"أنت"},
+  field_gate:     {en:"Record your field start, then finish it — the stage can only be ended after that.",
+                   ar:"سجّل بدء عملك الميداني ثم إنهاءه — لا يمكن إنهاء المرحلة إلا بعد ذلك."},
 
   /* dashboard filter tabs */
   tab_all:        {en:"All", ar:"الكل"},
@@ -956,6 +958,12 @@ function fieldMembers(rq){
   return [...(a.shooting||[]), a.reporter, a.journalist, a.heba].filter(Boolean);
 }
 function isFieldMember(rq,uid){ return fieldMembers(rq).includes(uid); }
+/* a field member must stamp both بدء and إنهاء before they can end a field stage */
+function fieldGated(rq,uid){
+  if(!FIELD_STAGES.includes(rq.status) || !isFieldMember(rq,uid)) return false;
+  const rec=(rq.field||{})[uid]||{};
+  return !(rec.start && rec.end);
+}
 function gmapLink(p){ return "https://www.google.com/maps?q="+p.lat+","+p.lng; }
 /* language-neutral so it can also be stored in the audit trail */
 function fmtDur(ms){
@@ -1519,7 +1527,7 @@ function viewList(archive){
   // client sees only requests that reached client stage
   if(r==="client") base=base.filter(x=>["client_version","ready_to_publish","published","cancelled"].includes(x.status));
   // staff see only requests they are assigned to
-  if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.shooting.includes(r)||x.assign.editors.includes(r)||x.assign.reporter===r||x.assign.journalist===r);
+  if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.shooting.includes(r)||x.assign.editors.includes(r)||x.assign.reporter===r||x.assign.journalist===r||x.assign.heba===r);
 
   // status filter tabs (active list only)
   let tabsHtml="";
@@ -1707,7 +1715,10 @@ function renderActionPanel(rq, r){
   }
   else {
     const btns = actionButtons(rq, r);
-    if(btns) inner = `<div class="btnrow">${btns}</div>`;
+    if(btns){
+      inner = `<div class="btnrow">${btns}</div>`;
+      if(fieldGated(rq,r)) inner += `<div class="small muted" style="margin-top:8px">${esc(t("field_gate"))}</div>`;
+    }
   }
   if(!inner) return "";
   return `<div class="section">${inner}</div>`;
@@ -1725,7 +1736,12 @@ function actionButtons(rq, r){
   }
   if(r==="head" && s==="head_approval"){ B.push(b("hd_approve","approve","good")); B.push(b("hd_changes","request_changes","warn")); }
   if(r==="marketing" && s==="changes_marketing"){ B.push(b("mk_forward","forward_head","good")); B.push(b("mk_toreq","send_requester","warn")); }
-  if(isStaff(r) && isOwner(rq,r) && ["in_progress","shooting","editing"].includes(s)){ B.push(b("tm_done","mark_done","primary")); }
+  if(isStaff(r) && isOwner(rq,r) && ["in_progress","shooting","editing"].includes(s)){
+    /* field crew: the stage can only be ended after their own start & finish are stamped */
+    B.push(fieldGated(rq,r)
+      ? `<button class="btn primary" disabled>${esc(t("mark_done"))}</button>`
+      : b("tm_done","mark_done","primary"));
+  }
   /* A reviewer keeps Approve/Request-changes until THEY personally act — even if a
      stage-mate already satisfied the stage — for as long as the request is in review.
      One approval per stage is enough to advance; a second from the same stage is optional. */
@@ -2076,7 +2092,8 @@ function doAction(act, rq, note){
       addTl(rq,"Sent back to Requester.","أُعيد لمقدم الطلب.",note);
       rq.status="changes_requester"; pushNoti("requester",rq,"Your request needs changes.","طلبك يحتاج إلى تعديلات."); break;
     case "tm_done": {
-      const next = rq.status==="in_progress"?"shooting":(rq.status==="shooting"?"editing":"internal_review");
+      if(fieldGated(rq,myRole())) return;   /* field start & finish must be stamped first */
+      const next =rq.status==="in_progress"?"shooting":(rq.status==="shooting"?"editing":"internal_review");
       if(next==="internal_review"){
         rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
         addTl(rq,"Editing done — sent to internal review (two stages).","انتهى المونتاج — أُرسل للمراجعة الداخلية (مرحلتان).");
