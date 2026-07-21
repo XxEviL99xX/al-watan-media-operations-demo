@@ -412,17 +412,17 @@ const DICT = {
   assign_h:       {en:"Assign team (pick the people, once)", ar:"تعيين الفريق (اختيار الأشخاص مرة واحدة)"},
   producers:      {en:"Producers", ar:"المنتجون"},
   editors:        {en:"Editors", ar:"المونتاج"},
-  need_reporter:  {en:"This request needs a reporter / presenter", ar:"يحتاج هذا الطلب إلى مراسل / مقدّم"},
-  reporter_rule:  {en:"Per policy, a copy goes to zalmushaigri@alwatannews.net and the reporter/presenter is assigned through the Editorial Manager only.",
-                   ar:"حسب السياسة، تُرسَل نسخة إلى zalmushaigri@alwatannews.net ويُعيَّن المراسل/المقدّم عبر مسؤول المحررين فقط."},
-  request_journal:{en:"Request reporter from Editorial Manager", ar:"طلب مراسل من مسؤول المحررين"},
+  need_reporter:  {en:"Editorial roles needed for this request", ar:"الأدوار التحريرية المطلوبة لهذا الطلب"},
+  reporter_rule:  {en:"Per policy, a copy goes to zalmushaigri@alwatannews.net and the reporter/journalist is assigned through the Editorial Manager only.",
+                   ar:"حسب السياسة، تُرسَل نسخة إلى zalmushaigri@alwatannews.net ويُعيَّن المراسل/الصحفي عبر مسؤول المحررين فقط."},
+  request_journal:{en:"Request editorial staff from Editorial Manager", ar:"طلب الطاقم التحريري من مسؤول المحررين"},
   finalize_team:  {en:"Finalize & start production", ar:"اعتماد الفريق وبدء الإنتاج"},
-  reporter_pending:{en:"Waiting for the Editorial Manager to select the reporter/presenter…",
-                    ar:"بانتظار اختيار مسؤول المحررين للمراسل/المقدّم…"},
-  reporter_chosen:{en:"Reporter/presenter selected", ar:"تم اختيار المراسل/المقدّم"},
+  reporter_pending:{en:"Waiting for the Editorial Manager to select the editorial staff…",
+                    ar:"بانتظار اختيار مسؤول المحررين للطاقم التحريري…"},
+  reporter_chosen:{en:"Editorial staff selected", ar:"تم اختيار الطاقم التحريري"},
 
   /* journal panel */
-  journal_h:      {en:"Select reporter / presenter", ar:"اختيار المراسل / المقدّم"},
+  journal_h:      {en:"Select editorial staff", ar:"اختيار الطاقم التحريري"},
   journal_pick:   {en:"Choose who covers this request:", ar:"اختر من يغطي هذا الطلب:"},
   confirm_reporter:{en:"Confirm selection & start production", ar:"تأكيد الاختيار وبدء الإنتاج"},
 
@@ -508,6 +508,7 @@ const KIND_LABEL = {
   producer:{en:"Producer",ar:"منتج",ic:"🎬"},
   editor:{en:"Video editor",ar:"مونتير",ic:"✂️"},
   reporter:{en:"Reporter / presenter",ar:"مراسل / مقدّم",ic:"🎤"},
+  journalist:{en:"Journalist",ar:"صحفي",ic:"📰"},
 };
 function kindOf(id){ if(ROLES.includes(id)) return id; return (typeof STAFF!=="undefined" && STAFF[id]) ? STAFF[id] : "staff"; }
 function isStaff(id){ return !ROLES.includes(id); }
@@ -532,7 +533,7 @@ const STATUS = {
   assign_team:         {cls:"assign",   owner:["head"], step:4},
   journal_selection:   {cls:"assign",   owner:["journal"], step:4},
   in_progress:         {cls:"work",     owner:["producer"], step:5},
-  shooting:            {cls:"work",     owner:["producer","reporter"], step:5},
+  shooting:            {cls:"work",     owner:["producer","reporter","journalist"], step:5},
   editing:             {cls:"work",     owner:["editor"], step:5},
   internal_review:     {cls:"review",   owner:["review1","review2"], step:5},
   revision_routing:    {cls:"routing",  owner:["head"], step:5},
@@ -548,7 +549,7 @@ const STATUS_LABEL = {
   head_approval:{en:"Head approval",ar:"موافقة رئيس القسم"},
   changes_marketing:{en:"Changes requested (Marketing)",ar:"تعديلات مطلوبة (التسويق)"},
   assign_team:{en:"Assign team",ar:"تعيين الفريق"},
-  journal_selection:{en:"Reporter selection (Head of Journal)",ar:"اختيار المراسل (رئيس التحرير)"},
+  journal_selection:{en:"Editorial staff selection (Editorial Manager)",ar:"اختيار الطاقم التحريري (مسؤول المحررين)"},
   in_progress:{en:"In progress",ar:"قيد التنفيذ"},
   shooting:{en:"Shooting",ar:"التصوير"},
   editing:{en:"Editing",ar:"المونتاج"},
@@ -588,11 +589,11 @@ const STAGE_GUIDE = {
   assign_team:{
     d:{en:"The Production Head is assigning the people (once).",ar:"يعيّن رئيس الإنتاج الأشخاص (مرة واحدة)."},
     n:{en:"Once finalized → production starts (In progress).",ar:"بعد الاعتماد ← يبدأ الإنتاج (قيد التنفيذ)."},
-    o:{en:"Pick producers & video editors. If a reporter is needed, request the Editorial Manager first.",ar:"اختر المنتجين والمونتيرين. إن لزم مراسل، اطلب مسؤول المحررين أولًا."}},
+    o:{en:"Pick producers & video editors. If a reporter or journalist is needed, request the Editorial Manager first.",ar:"اختر المنتجين والمونتيرين. إن لزم مراسل أو صحفي، اطلب مسؤول المحررين أولًا."}},
   journal_selection:{
-    d:{en:"The Editorial Manager is selecting the reporter/presenter.",ar:"يختار مسؤول المحررين المراسل/المقدّم."},
-    n:{en:"After selection → back to the Head to finalize the team.",ar:"بعد الاختيار ← يعود للرئيس لاعتماد الفريق."},
-    o:{en:"Choose the reporter/presenter and confirm.",ar:"اختر المراسل/المقدّم وأكّد."}},
+    d:{en:"The Editorial Manager is selecting the requested editorial staff (reporter / journalist).",ar:"يختار مسؤول المحررين الطاقم التحريري المطلوب (مراسل / صحفي)."},
+    n:{en:"After selection → production starts with the complete team.",ar:"بعد الاختيار ← يبدأ الإنتاج بالفريق المكتمل."},
+    o:{en:"Choose a person for each requested role and confirm.",ar:"اختر شخصًا لكل دور مطلوب ثم أكّد."}},
   in_progress:{
     d:{en:"Preparation & planning by the assigned producer.",ar:"التحضير والتخطيط بواسطة المنتج المعيَّن."},
     n:{en:"Next stage → Shooting (التصوير).",ar:"المرحلة التالية ← التصوير."},
@@ -653,6 +654,7 @@ const ROSTER = {
   producers:["Ali Hassan","Sara Ahmed","Khalid Rashid"],
   editors:["Mohammed Khalid","Layla Omar"],
   reporters:["Fatima Noor","Yousef Salem","Huda Kamal"],
+  journalists:["Noor Abdulla","Salman Isa"],
 };
 const GROUPS = {
   g1:["nnasser@alwatannews.net","m.nazeeh@alwatannews.net"],
@@ -663,6 +665,7 @@ const STAFF = {};
 ROSTER.producers.forEach(n=>STAFF[n]="producer");
 ROSTER.editors.forEach(n=>STAFF[n]="editor");
 ROSTER.reporters.forEach(n=>STAFF[n]="reporter");
+ROSTER.journalists.forEach(n=>STAFF[n]="journalist");
 
 /* demo credentials — every account uses the same demo password */
 const DEMO_PASS = "demo123";
@@ -682,7 +685,7 @@ function seed(){
     contact:"", phone:"", email:"", eventDate:"", eventDateTime:"",
     coverage:"comprehensive", eventType:"editorial",
     locationText:"", locationLat:null, locationLng:null, attachments:[], notes:"",
-    assign:{producers:[],editors:[],reporterNeeded:false,journalistNeeded:false,reporterChosen:false,reporter:null},
+    assign:{producers:[],editors:[],reporterNeeded:false,journalistNeeded:false,reporterChosen:false,reporter:null,journalist:null},
     g1:false, g2:false, clientLink:null, comments:[], timeline:[]
   }, o);
   const reqs = [
@@ -692,7 +695,7 @@ function seed(){
       due:"2026-08-05", locationText:"Sakhir Air Base, Bahrain", locationLat:26.0, locationLng:50.62,
       notes:"Full opening-day coverage: aerial displays, VIP arrivals, 90-sec highlight reel + social cuts.",
       requester:"requester", status:"internal_review", created:now-86400000*4,
-      assign:{producers:["Ali Hassan"],editors:["Mohammed Khalid"],reporterNeeded:true,reporterChosen:true,reporter:"Fatima Noor"},
+      assign:{producers:["Ali Hassan"],editors:["Mohammed Khalid"],reporterNeeded:true,journalistNeeded:false,reporterChosen:true,reporter:"Fatima Noor",journalist:null},
       g1:true, g2:false,
       timeline:[
         tl("requester","Submitted the request.","قدّم الطلب.", now-86400000*4),
@@ -707,7 +710,7 @@ function seed(){
       due:"2026-08-12", locationText:"Batelco HQ, Hamala", locationLat:26.166, locationLng:50.49,
       notes:"30-sec festive promo, Arabic VO, brand colors, 3 platform aspect ratios.",
       requester:"requester", status:"editing", created:now-86400000*2,
-      assign:{producers:["Sara Ahmed"],editors:["Layla Omar"],reporterNeeded:false,reporterChosen:false,reporter:null},
+      assign:{producers:["Sara Ahmed"],editors:["Layla Omar"],reporterNeeded:false,journalistNeeded:false,reporterChosen:false,reporter:null,journalist:null},
       timeline:[
         tl("requester","Submitted the request.","قدّم الطلب.", now-86400000*2),
         tl("marketing","Approved.","موافقة.", now-86400000*2+1800000),
@@ -737,6 +740,8 @@ function migrateSavedWorkflow(saved){
   let changed=false;
   (saved.requests||[]).forEach(rq=>{
     const assign=rq.assign;
+    if(assign && assign.journalist===undefined){ assign.journalist=null; changed=true; }
+    if(assign && assign.journalistNeeded===undefined){ assign.journalistNeeded=false; changed=true; }
     const teamWasAlreadyComplete=assign&&assign.reporterChosen&&assign.reporter&&assign.producers?.length&&assign.editors?.length;
     if(rq.status==="assign_team"&&teamWasAlreadyComplete){
       rq.status="in_progress";
@@ -777,6 +782,18 @@ function todayISO(){ const d=new Date(); const l=new Date(d.getTime()-d.getTimez
 function refOf(rq){ return "VPR-"+new Date(rq.created).getFullYear()+"-"+String(rq.id).padStart(4,"0"); }
 function reqById(id){ return state.requests.find(r=>r.id===id); }
 function needsEditorial(req){ return !!(req && req.assign && (req.assign.reporterNeeded || req.assign.journalistNeeded)); }
+/* every requested editorial role has a person picked */
+function editorialComplete(req){
+  const a=req&&req.assign; if(!a) return true;
+  return (!a.reporterNeeded || !!a.reporter) && (!a.journalistNeeded || !!a.journalist);
+}
+/* chosen editorial people as "Role: Name" parts */
+function editorialStaffParts(rq){
+  const parts=[];
+  if(rq.assign.reporter)   parts.push(`${t("kind_reporter")}: ${rq.assign.reporter}`);
+  if(rq.assign.journalist) parts.push(`${t("f_journalist")}: ${rq.assign.journalist}`);
+  return parts;
+}
 function myRole(){ return state.currentUser; }
 function isOwner(req, uid){
   const kinds = STATUS[req.status].owner || [];
@@ -785,6 +802,7 @@ function isOwner(req, uid){
   if(k==="producer") return req.assign.producers.includes(uid);
   if(k==="editor")   return req.assign.editors.includes(uid);
   if(k==="reporter") return req.assign.reporter===uid;
+  if(k==="journalist") return req.assign.journalist===uid;
   return true; // org roles
 }
 // resolve current owners of a request to concrete user ids (for notifications)
@@ -794,6 +812,7 @@ function ownersOf(req){
     if(k==="producer") out.push(...req.assign.producers);
     else if(k==="editor") out.push(...req.assign.editors);
     else if(k==="reporter"){ if(req.assign.reporter) out.push(req.assign.reporter); }
+    else if(k==="journalist"){ if(req.assign.journalist) out.push(req.assign.journalist); }
     else out.push(k);
   });
   return [...new Set(out)];
@@ -1176,7 +1195,9 @@ function bindNew(){
       rq.attachments=(rq.attachments||[]).concat(files);
       rq.assign.reporterNeeded=reporterNeeded;
       rq.assign.journalistNeeded=journalistNeeded;
-      if(!needsEditorial(rq)){ rq.assign.reporterChosen=false; rq.assign.reporter=null; }
+      if(!reporterNeeded) rq.assign.reporter=null;
+      if(!journalistNeeded) rq.assign.journalist=null;
+      rq.assign.reporterChosen = needsEditorial(rq) && editorialComplete(rq);
       state.activeReq=rq.id; state.editReq=null;
       const cu=state.currentUser; state.currentUser="requester";
       addTl(rq,"Edited & resubmitted the request.","تم تعديل الطلب وإعادة إرساله.",note);
@@ -1211,7 +1232,7 @@ function viewList(archive){
   // client sees only requests that reached client stage
   if(r==="client") base=base.filter(x=>["client_version","ready_to_publish","published","cancelled"].includes(x.status));
   // staff see only requests they are assigned to
-  if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.editors.includes(r)||x.assign.reporter===r);
+  if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.editors.includes(r)||x.assign.reporter===r||x.assign.journalist===r);
 
   // status filter tabs (active list only)
   let tabsHtml="";
@@ -1295,11 +1316,11 @@ function viewDetail(){
 
   // summary card (reused everywhere)
   let assignLine="";
-  if(!clientView && (rq.assign.producers.length||rq.assign.editors.length||rq.assign.reporter)){
+  if(!clientView && (rq.assign.producers.length||rq.assign.editors.length||rq.assign.reporter||rq.assign.journalist)){
     const parts=[];
     if(rq.assign.producers.length) parts.push(`${t("producers")}: ${rq.assign.producers.join(", ")}`);
     if(rq.assign.editors.length)   parts.push(`${t("editors")}: ${rq.assign.editors.join(", ")}`);
-    if(rq.assign.reporter)         parts.push(`${t("kind_reporter")}: ${rq.assign.reporter}`);
+    parts.push(...editorialStaffParts(rq));
     assignLine=`<div class="k">${esc(state.lang==="ar"?"الفريق":"Team")}</div><div class="v" dir="auto">${esc(parts.join(" · "))}</div>`;
   }
 
@@ -1308,7 +1329,7 @@ function viewDetail(){
     ? ` · <a href="https://www.openstreetmap.org/?mlat=${rq.locationLat}&mlon=${rq.locationLng}#map=15/${rq.locationLat}/${rq.locationLng}" target="_blank" rel="noopener">${esc(t("view_map"))} ↗</a>` : "";
   const editorialRoles = [rq.assign.reporterNeeded&&t("f_reporter"),rq.assign.journalistNeeded&&t("f_journalist")].filter(Boolean);
   const repRow = editorialRoles.length
-    ? `<div class="k">${esc(t("f_reporter_q"))}</div><div class="v" dir="auto">✅ ${esc(editorialRoles.join(" / "))}${(!clientView&&rq.assign.reporter)?` · ${esc(rq.assign.reporter)}`:""}</div>` : "";
+    ? `<div class="k">${esc(t("f_reporter_q"))}</div><div class="v" dir="auto">✅ ${esc(editorialRoles.join(" / "))}${!clientView&&editorialStaffParts(rq).length?` · ${esc(editorialStaffParts(rq).join(" · "))}`:""}</div>` : "";
   const contactRows = clientView ? "" :
     `${rq.contact?`<div class="k">${esc(t("f_contact"))}</div><div class="v" dir="auto">${esc(rq.contact)}</div>`:""}
      ${rq.phone?`<div class="k">${esc(t("f_phone"))}</div><div class="v">${esc(rq.phone)}</div>`:""}
@@ -1429,28 +1450,43 @@ function assignPanel(rq){
     <div class="chips">${chipSet("producers",ROSTER.producers)}</div>
     <div class="small muted" style="margin-top:12px">${esc(t("editors"))}</div>
     <div class="chips">${chipSet("editors",ROSTER.editors)}</div>
-    <label class="f" style="display:flex;align-items:center;gap:8px;margin-top:16px;font-weight:600">
-      <input type="checkbox" id="repNeeded" ${editorialNeeded?"checked":""} style="width:auto">
-      ${esc(t("need_reporter"))}
-    </label>
+    <div class="small muted" style="margin-top:16px;font-weight:600">${esc(t("need_reporter"))}</div>
+    <div class="role-checks" role="group" aria-label="${esc(t("need_reporter"))}">
+      <label class="role-check" for="repNeeded">
+        <input type="checkbox" id="repNeeded" ${rq.assign.reporterNeeded?"checked":""}>
+        <span>🎤 ${esc(t("f_reporter"))}</span>
+      </label>
+      <label class="role-check" for="jourNeeded">
+        <input type="checkbox" id="jourNeeded" ${rq.assign.journalistNeeded?"checked":""}>
+        <span>📰 ${esc(t("f_journalist"))}</span>
+      </label>
+    </div>
     <div id="repRuleBox" class="${editorialNeeded?"":"hidden"}">
       <div class="note">${esc(t("reporter_rule"))}</div>
-      ${rq.assign.reporterChosen?`<div class="small" style="color:var(--assign);font-weight:700;margin-top:8px">✔ ${esc(t("reporter_chosen"))}: ${esc(rq.assign.reporter)}</div>`:""}
+      ${editorialStaffParts(rq).length?`<div class="small" style="color:var(--assign);font-weight:700;margin-top:8px">✔ ${esc(t("reporter_chosen"))}: ${esc(editorialStaffParts(rq).join(" · "))}</div>`:""}
     </div>
     <div class="btnrow" style="margin-top:16px">
-      ${(editorialNeeded && !rq.assign.reporterChosen)
+      ${(editorialNeeded && !editorialComplete(rq))
         ? `<button class="btn blue" id="reqJournal">${esc(t("request_journal"))}</button>`
         : `<button class="btn good" id="finalizeTeam">${esc(t("finalize_team"))}</button>`}
     </div>`;
 }
 function journalPanel(rq){
-  return `<h2>${esc(t("journal_h"))}</h2>
-    <div class="small muted">${esc(t("journal_pick"))}</div>
+  const repSection = rq.assign.reporterNeeded ? `
+    <div class="small muted" style="margin-top:10px">🎤 ${esc(t("kind_reporter"))}</div>
     <div class="chips" id="repChips">
       ${ROSTER.reporters.map(n=>`<span class="chip ${rq.assign.reporter===n?"sel":""}" data-rep="${esc(n)}">${esc(n)}</span>`).join("")}
-    </div>
+    </div>` : "";
+  const jourSection = rq.assign.journalistNeeded ? `
+    <div class="small muted" style="margin-top:10px">📰 ${esc(t("f_journalist"))}</div>
+    <div class="chips" id="jourChips">
+      ${ROSTER.journalists.map(n=>`<span class="chip ${rq.assign.journalist===n?"sel":""}" data-jour="${esc(n)}">${esc(n)}</span>`).join("")}
+    </div>` : "";
+  return `<h2>${esc(t("journal_h"))}</h2>
+    <div class="small muted">${esc(t("journal_pick"))}</div>
+    ${repSection}${jourSection}
     <div class="btnrow" style="margin-top:14px">
-      <button class="btn good" id="confirmRep" ${rq.assign.reporter?"":"disabled"}>${esc(t("confirm_reporter"))}</button>
+      <button class="btn good" id="confirmRep" ${editorialComplete(rq)?"":"disabled"}>${esc(t("confirm_reporter"))}</button>
     </div>`;
 }
 function reviewPanel(rq){
@@ -1521,13 +1557,15 @@ function bindDetail(){
     save(); render();
   });
   const rn=document.getElementById("repNeeded");
-  if(rn) rn.onchange=()=>{ rq.assign.reporterNeeded=rn.checked; rq.assign.journalistNeeded=false; if(!rn.checked){rq.assign.reporterChosen=false;rq.assign.reporter=null;} save(); render(); };
+  if(rn) rn.onchange=()=>{ rq.assign.reporterNeeded=rn.checked; if(!rn.checked) rq.assign.reporter=null; rq.assign.reporterChosen=needsEditorial(rq)&&editorialComplete(rq); save(); render(); };
+  const jn=document.getElementById("jourNeeded");
+  if(jn) jn.onchange=()=>{ rq.assign.journalistNeeded=jn.checked; if(!jn.checked) rq.assign.journalist=null; rq.assign.reporterChosen=needsEditorial(rq)&&editorialComplete(rq); save(); render(); };
   const rj=document.getElementById("reqJournal");
   if(rj) rj.onclick=()=>{
-    addTl(rq,"Requested a reporter/presenter from the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
-             "طلب مراسلًا/مقدّمًا من مسؤول المحررين (نسخة إلى zalmushaigri@alwatannews.net).");
+    addTl(rq,"Requested the editorial staff (reporter/journalist) from the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
+             "طلب الطاقم التحريري (مراسل/صحفي) من مسؤول المحررين (نسخة إلى zalmushaigri@alwatannews.net).");
     rq.status="journal_selection";
-    pushNoti("journal", rq, "A reporter/presenter selection is requested.","مطلوب اختيار مراسل/مقدّم.");
+    pushNoti("journal", rq, "An editorial staff selection is requested.","مطلوب اختيار الطاقم التحريري.");
     save(); render();
   };
   const ft=document.getElementById("finalizeTeam");
@@ -1541,14 +1579,20 @@ function bindDetail(){
     save(); render();
   };
 
-  // journal reporter pick
+  // journal editorial staff pick (one chip list per requested role)
   document.querySelectorAll("[data-rep]").forEach(el=>el.onclick=()=>{
     rq.assign.reporter=el.dataset.rep; save(); render();
   });
+  document.querySelectorAll("[data-jour]").forEach(el=>el.onclick=()=>{
+    rq.assign.journalist=el.dataset.jour; save(); render();
+  });
   const cr=document.getElementById("confirmRep");
   if(cr) cr.onclick=()=>{
+    if(!editorialComplete(rq)) return;
     rq.assign.reporterChosen=true;
-    addTl(rq,"Selected reporter/presenter: "+rq.assign.reporter+". The complete team is active and production started.","تم اختيار المراسل/المقدّم: "+rq.assign.reporter+". الفريق مكتمل وبدأ الإنتاج.");
+    const staffEn=[rq.assign.reporter&&("Reporter/presenter: "+rq.assign.reporter),rq.assign.journalist&&("Journalist: "+rq.assign.journalist)].filter(Boolean).join(", ");
+    const staffAr=[rq.assign.reporter&&("المراسل/المقدّم: "+rq.assign.reporter),rq.assign.journalist&&("الصحفي: "+rq.assign.journalist)].filter(Boolean).join("، ");
+    addTl(rq,"Selected "+staffEn+". The complete team is active and production started.","تم اختيار "+staffAr+". الفريق مكتمل وبدأ الإنتاج.");
     rq.status="in_progress";
     notifyOwners(rq,"The complete team is assigned — production has started.","تم تعيين الفريق بالكامل — بدأ الإنتاج.");
     save(); render();
