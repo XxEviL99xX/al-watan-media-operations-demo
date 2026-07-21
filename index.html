@@ -113,6 +113,11 @@
   .media-item.file{align-items:center;justify-content:center;padding:14px;text-align:center;gap:6px}
   .media-item.file .media-cap{white-space:normal}
   .media-file{font-size:30px}
+  /* smaller gallery for files attached to a comment */
+  .media-grid.compact{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+  .media-grid.compact .media-item img,.media-grid.compact .media-item video{height:86px}
+  .media-grid.compact .media-file{font-size:22px}
+  .media-grid.compact .media-item.file{padding:10px}
   :root[data-theme="dark"] input[type=file]{color:var(--ink)}
 
   /* List */
@@ -418,6 +423,8 @@ const DICT = {
   comments_l:     {en:"Comments", ar:"التعليقات"},
   add_comment:    {en:"Add comment", ar:"أضف تعليقًا"},
   comment_ph:     {en:"Write a comment…", ar:"اكتب تعليقًا…"},
+  cmt_attach:     {en:"Attach files to this comment", ar:"إرفاق ملفات مع التعليق"},
+  cmt_empty:      {en:"Write a comment or attach a file first.", ar:"اكتب تعليقًا أو أرفق ملفًا أولًا."},
   internal_only:  {en:"Internal", ar:"داخلي"},
 
   /* actions */
@@ -918,6 +925,7 @@ function save(){
       (slim.requests||[]).forEach(r=>{
         (r.attachments||[]).forEach(a=>{ delete a.url; });
         if(r.changeReq) (r.changeReq.attachments||[]).forEach(a=>{ delete a.url; });
+        (r.comments||[]).forEach(c=>(c.files||[]).forEach(a=>{ delete a.url; }));
       });
       localStorage.setItem(LS_KEY, JSON.stringify(slim));
     }catch(e2){}
@@ -1689,7 +1697,11 @@ function viewDetail(){
 
 function attachmentsSection(rq){
   if(!rq.attachments || !rq.attachments.length) return "";
-  const items = rq.attachments.map(a=>{
+  return `<div class="section"><h2>${esc(t("f_attach"))} <span class="muted small">(${rq.attachments.length})</span></h2>${mediaGrid(rq.attachments)}</div>`;
+}
+function mediaGrid(list, compact){
+  if(!list || !list.length) return "";
+  const items = list.map(a=>{
     const cap = `<span class="media-cap" dir="auto" title="${esc(a.name)}">${esc(a.name)}</span>`;
     const ty = a.type||"";
     if(a.url && ty.indexOf("image/")===0)
@@ -1702,7 +1714,7 @@ function attachmentsSection(rq){
     const note = a.url ? "" : ` · <span class="muted">${esc(t("attach_toobig"))}</span>`;
     return `<a class="media-item file" ${dl}><span class="media-file">📄</span><span class="media-cap" dir="auto">${esc(a.name)} · ${esc(fmtBytes(a.size))}${note}</span></a>`;
   }).join("");
-  return `<div class="section"><h2>${esc(t("f_attach"))} <span class="muted small">(${rq.attachments.length})</span></h2><div class="media-grid">${items}</div></div>`;
+  return `<div class="media-grid${compact?" compact":""}">${items}</div>`;
 }
 function renderActionPanel(rq, r){
   const s=rq.status;
@@ -1930,22 +1942,26 @@ function commentPanel(rq){
   const list = rq.comments.map(c=>`
     <div class="cmt">
       <div class="h"><span>${esc(roleName(c.role))} ${c.internal?`<span class="internal-tag">${esc(t("internal_only"))}</span>`:""}</span><span>${esc(fmtDate(c.time))}</span></div>
-      <div dir="auto">${esc(c.text)}</div>
+      ${c.text?`<div dir="auto">${esc(c.text)}</div>`:""}
+      ${mediaGrid(c.files,true)}
     </div>`).join("") || `<div class="small muted">—</div>`;
-  return `<div class="section"><h2>${esc(t("comments_l"))}</h2>${list}
-    <textarea id="cmtBox" placeholder="${esc(t("comment_ph"))}" style="margin-top:10px"></textarea>
-    <div class="btnrow" style="margin-top:8px"><button class="btn" id="cmtAdd">${esc(t("add_comment"))}</button></div>
-  </div>`;
+  return `<div class="section"><h2>${esc(t("comments_l"))}</h2>${list}${commentBox()}</div>`;
 }
 function clientComments(rq){
   // client sees only non-internal comments
   const list = rq.comments.filter(c=>!c.internal).map(c=>`
     <div class="cmt"><div class="h"><span>${esc(c.role==="client"?roleName("client"):"Al Watan")}</span><span>${esc(fmtDate(c.time))}</span></div>
-      <div dir="auto">${esc(c.text)}</div></div>`).join("") || `<div class="small muted">—</div>`;
-  return `<div class="section"><h2>${esc(t("comments_l"))}</h2>${list}
-    <textarea id="cmtBox" placeholder="${esc(t("comment_ph"))}" style="margin-top:10px"></textarea>
-    <div class="btnrow" style="margin-top:8px"><button class="btn" id="cmtAdd">${esc(t("add_comment"))}</button></div>
-  </div>`;
+      ${c.text?`<div dir="auto">${esc(c.text)}</div>`:""}
+      ${mediaGrid(c.files,true)}</div>`).join("") || `<div class="small muted">—</div>`;
+  return `<div class="section"><h2>${esc(t("comments_l"))}</h2>${list}${commentBox()}</div>`;
+}
+// every comment — from any role, at any stage — can carry files
+function commentBox(){
+  return `<textarea id="cmtBox" placeholder="${esc(t("comment_ph"))}" style="margin-top:10px"></textarea>
+    <div class="small muted" style="margin:8px 0 4px">${esc(t("cmt_attach"))}</div>
+    <input type="file" id="cmtFiles" multiple>
+    <div id="cmtErr" class="small" style="color:var(--cancelled);margin-top:6px"></div>
+    <div class="btnrow" style="margin-top:8px"><button class="btn" id="cmtAdd">${esc(t("add_comment"))}</button></div>`;
 }
 
 /* ---------- Detail bindings / actions ---------- */
@@ -2075,9 +2091,14 @@ function bindDetail(){
 
   // comments
   const ca=document.getElementById("cmtAdd");
-  if(ca) ca.onclick=()=>{
-    const box=document.getElementById("cmtBox"); const txt=box.value.trim(); if(!txt) return;
-    rq.comments.push({role:r, text:txt, time:Date.now(), internal: r!=="client"});
+  if(ca) ca.onclick=async ()=>{
+    const box=document.getElementById("cmtBox"); const txt=box.value.trim();
+    const err=document.getElementById("cmtErr");
+    const picked=document.getElementById("cmtFiles").files||[];
+    if(!txt && !picked.length){ err.textContent=t("cmt_empty"); return; }
+    err.textContent="";
+    const files=await readFiles(picked);
+    rq.comments.push({role:r, text:txt, files, time:Date.now(), internal: r!=="client"});
     save(); render();
   };
 }
