@@ -255,6 +255,17 @@
   :root[data-theme="dark"] .diff-new{background:#16311e;color:#8fdca6}
   :root[data-theme="dark"] .cr-banner{background:#2a2013;border-color:#5a4020;color:#e8c48a}
 
+  /* field tracking (start / finish with date, time & location) */
+  .fieldrow{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:10px;background:var(--bg)}
+  .fl-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .fl-name{font-weight:700}
+  .fl-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:6px;font-size:12.5px}
+  .fl-k{font-weight:700;font-size:12px;color:var(--muted);min-width:74px}
+  .fl-coords{background:#eef4fb;border-radius:7px;padding:2px 8px;font-size:12px}
+  .fl-sim{background:#fff4e5;color:#b4620a;border:1px solid #f3d3ab;border-radius:20px;padding:1px 8px;font-size:11px}
+  :root[data-theme="dark"] .fl-coords{background:#1e2733}
+  :root[data-theme="dark"] .fl-sim{background:#3a2a10;border-color:#5c4420;color:#f0b969}
+
   /* modal */
   .modal-ov{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:80;padding:18px}
   .modal{background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(16,24,40,.28);padding:20px 22px;width:100%;max-width:440px}
@@ -532,6 +543,22 @@ const DICT = {
   g_client_wait:  {en:"Your video is being produced — we'll notify you when it's ready.",
                    ar:"جارٍ إنتاج الفيديو — سنُعلمك عند الجاهزية."},
 
+  /* field tracking (shooting crew + editorial staff on location) */
+  field_h:        {en:"Field tracking — start / finish", ar:"التتبع الميداني — بدء / إنهاء"},
+  field_note:     {en:"Only the field crew (shooting team + reporter / journalist / Heba) records start and finish. Each click stores the date, time and location.",
+                   ar:"الطاقم الميداني فقط (فريق التصوير + المراسل / الصحفي / هبة) يسجّل البدء والإنهاء. كل ضغطة تسجّل التاريخ والوقت والموقع."},
+  field_start:    {en:"Start field work", ar:"بدء العمل الميداني"},
+  field_end:      {en:"Finish field work", ar:"إنهاء العمل الميداني"},
+  field_started_l:{en:"Started", ar:"البدء"},
+  field_ended_l:  {en:"Finished", ar:"الإنهاء"},
+  field_pending:  {en:"Not started yet", ar:"لم يبدأ بعد"},
+  field_inprog:   {en:"In the field now", ar:"في الموقع الآن"},
+  field_done:     {en:"Field work completed", ar:"اكتمل العمل الميداني"},
+  field_dur:      {en:"Duration", ar:"المدة"},
+  field_sim:      {en:"simulated location (demo)", ar:"موقع تجريبي (عرض)"},
+  field_locating: {en:"Getting your location…", ar:"جارٍ تحديد موقعك…"},
+  field_you:      {en:"you", ar:"أنت"},
+
   /* dashboard filter tabs */
   tab_all:        {en:"All", ar:"الكل"},
   tab_mine:       {en:"Needs my action", ar:"يتطلّب إجرائي"},
@@ -766,7 +793,9 @@ function seed(){
     assign:{producers:[],shooting:[],editors:[],reporterNeeded:false,journalistNeeded:false,hebaNeeded:false,reporterChosen:false,reporter:null,journalist:null,heba:null},
     /* g1/g2 = stage satisfied (≥1 approval); g1By/g2By = reviewer ids who approved that stage
        (a list, since either/both reviewers in a stage may approve — one is enough to satisfy it) */
-    g1:false, g2:false, g1By:[], g2By:[], clientLink:null, comments:[], timeline:[]
+    g1:false, g2:false, g1By:[], g2By:[], clientLink:null, comments:[], timeline:[],
+    /* field tracking: { "<member name>": {start:{time,lat,lng,acc,sim}, end:{…}} } */
+    field:{}
   }, o);
   const reqs = [
     mk({ id:1, title:"Bahrain Airshow — opening coverage", client:"Ministry of Transport",
@@ -777,6 +806,13 @@ function seed(){
       requester:"requester", status:"internal_review", created:now-86400000*4,
       assign:{producers:[],shooting:["Rashid Al Saleh"],editors:["Mohammed Khalid"],reporterNeeded:true,journalistNeeded:false,reporterChosen:true,reporter:"Fatima Noor",journalist:null},
       g1:true, g2:false, g1By:["rev_direction"], g2By:[],
+      /* field crew already shot this one — start/finish with date, time & location */
+      field:{
+        "Rashid Al Saleh":{start:{time:now-86400000*3+3600000*8, lat:26.00121, lng:50.61984, acc:12, sim:false},
+                           end:  {time:now-86400000*3+3600000*13,lat:26.00098, lng:50.62057, acc:15, sim:false}},
+        "Fatima Noor":    {start:{time:now-86400000*3+3600000*9, lat:26.00104, lng:50.62012, acc:18, sim:false},
+                           end:  {time:now-86400000*3+3600000*12,lat:26.00110, lng:50.62040, acc:22, sim:false}},
+      },
       timeline:[
         tl("requester","Submitted the request.","قدّم الطلب.", now-86400000*4),
         tl("marketing","Approved — moved to Head.","موافقة — أُحيل للرئيس.", now-86400000*4+3600000),
@@ -791,6 +827,8 @@ function seed(){
       notes:"30-sec festive promo, Arabic VO, brand colors, 3 platform aspect ratios.",
       requester:"requester", status:"editing", created:now-86400000*2,
       assign:{producers:[],shooting:["Noor Al Hassan"],editors:["Layla Omar"],reporterNeeded:false,journalistNeeded:false,reporterChosen:false,reporter:null,journalist:null},
+      field:{ "Noor Al Hassan":{start:{time:now-3600000*9, lat:26.16612, lng:50.49043, acc:9, sim:false},
+                                end:  {time:now-3600000*5, lat:26.16598, lng:50.49071, acc:11, sim:false}} },
       timeline:[
         tl("requester","Submitted the request.","قدّم الطلب.", now-86400000*2),
         tl("marketing","Approved.","موافقة.", now-86400000*2+1800000),
@@ -831,6 +869,8 @@ function migrateSavedWorkflow(saved){
     const toArr=(v,fallback)=> v==null ? (fallback||[]) : (Array.isArray(v)?v:[v]);
     if(!Array.isArray(rq.g1By)){ rq.g1By = toArr(rq.g1By, rq.g1?["rev_direction"]:[]); changed=true; }
     if(!Array.isArray(rq.g2By)){ rq.g2By = toArr(rq.g2By, rq.g2?["rev_editorial"]:[]); changed=true; }
+    /* v6 task 6: field tracking store (start/finish with location) */
+    if(!rq.field || typeof rq.field!=="object"){ rq.field={}; changed=true; }
     const assign=rq.assign;
     if(assign && assign.journalist===undefined){ assign.journalist=null; changed=true; }
     if(assign && assign.journalistNeeded===undefined){ assign.journalistNeeded=false; changed=true; }
@@ -908,6 +948,40 @@ function editorialStaffParts(rq){
   if(rq.assign.heba)       parts.push(t("f_heba")); /* Heba IS the person — no "role: name" pair */
   return parts;
 }
+/* ---------- field tracking (start / finish with date, time & location) ---------- */
+/* only the crew that physically goes on location — the editor works in-house */
+const FIELD_STAGES=["in_progress","shooting"];
+function fieldMembers(rq){
+  const a=(rq&&rq.assign)||{};
+  return [...(a.shooting||[]), a.reporter, a.journalist, a.heba].filter(Boolean);
+}
+function isFieldMember(rq,uid){ return fieldMembers(rq).includes(uid); }
+function gmapLink(p){ return "https://www.google.com/maps?q="+p.lat+","+p.lng; }
+/* language-neutral so it can also be stored in the audit trail */
+function fmtDur(ms){
+  const m=Math.max(0,Math.round(ms/60000)); const h=Math.floor(m/60);
+  return h ? h+"h "+(m%60)+"m" : m+"m";
+}
+/* browser geolocation, with a simulated fallback (denied / unavailable / offline demo)
+   built around the request's own event location so the demo never breaks */
+function captureLocation(rq, cb){
+  const fallback=()=>{
+    const bLat=rq.locationLat!=null?rq.locationLat:26.2285;
+    const bLng=rq.locationLng!=null?rq.locationLng:50.586;
+    const jitter=()=>(Math.random()-0.5)*0.004;
+    cb({time:Date.now(), lat:+(bLat+jitter()).toFixed(5), lng:+(bLng+jitter()).toFixed(5), acc:null, sim:true});
+  };
+  if(!navigator.geolocation) return fallback();
+  let settled=false;
+  const guard=setTimeout(()=>{ if(!settled){ settled=true; fallback(); } }, 9000);
+  navigator.geolocation.getCurrentPosition(
+    p=>{ if(settled) return; settled=true; clearTimeout(guard);
+      cb({time:Date.now(), lat:+p.coords.latitude.toFixed(5), lng:+p.coords.longitude.toFixed(5),
+          acc:p.coords.accuracy!=null?Math.round(p.coords.accuracy):null, sim:false}); },
+    ()=>{ if(settled) return; settled=true; clearTimeout(guard); fallback(); },
+    {enableHighAccuracy:true, timeout:8000, maximumAge:0});
+}
+
 /* ---------- change-request diff (before/after audit) ---------- */
 const DIFF_LABEL={title:"f_title",client:"f_client",contact:"f_contact",phone:"f_phone",phone2:"f_phone2",
   email:"f_email",eventDateTime:"f_event_dt",due:"f_delivery",coverage:"f_coverage",eventType:"f_event_type",
@@ -1422,7 +1496,7 @@ function bindNew(){
     const r=Object.assign({ id:state.seq++, requester:"requester", status:"marketing_approval", created:Date.now(),
       attachments:files,
       assign:{producers:[],shooting:[],editors:[],reporterNeeded,journalistNeeded,hebaNeeded,reporterChosen:false,reporter:null,journalist:null,heba:null},
-      g1:false,g2:false,clientLink:null,comments:[],
+      g1:false,g2:false,g1By:[],g2By:[],clientLink:null,comments:[],field:{},
       timeline:[tl("requester","Submitted the request.","قدّم الطلب.")] }, fields);
     state.requests.push(r);
     pushNoti("marketing", r, "New request awaiting your approval.","طلب جديد بانتظار موافقتك.");
@@ -1580,6 +1654,7 @@ function viewDetail(){
   const media = attachmentsSection(rq);
   const crPanel = (!clientView && rq.changeReq) ? changeReqPanel(rq, r) : "";
   const actions = renderActionPanel(rq, r);
+  const fieldInfo = clientView ? "" : fieldPanel(rq, r);
   const reviewInfo = (rq.status==="internal_review" && !clientView) ? reviewPanel(rq) : "";
   const comments = clientView ? clientComments(rq) : commentPanel(rq);
   const timeline = clientView ? "" : timelinePanel(rq);
@@ -1587,7 +1662,7 @@ function viewDetail(){
   return `<div class="wrap">
     <button class="btn" id="backBtn" style="margin-bottom:14px">${esc(t("back"))}</button>
     ${guidanceCard(rq, r)}
-    <div class="card">${summary}${media}${crPanel}${actions}${reviewInfo}${comments}${timeline}</div>
+    <div class="card">${summary}${media}${crPanel}${actions}${fieldInfo}${reviewInfo}${comments}${timeline}</div>
     ${clientView?`<div class="note" style="margin-top:12px">${esc(t("client_only_note"))}</div>`:""}
   </div>`;
 }
@@ -1740,6 +1815,53 @@ function changeReqPanel(rq, r){
     ${btns}
   </div>`;
 }
+/* field crew start/finish log — visible to every internal role, actionable only by the
+   field member themselves while the request is on a field stage */
+function fieldPanel(rq, r){
+  const members=fieldMembers(rq);
+  if(!members.length) return "";
+  const recs=rq.field||{};
+  const active=FIELD_STAGES.includes(rq.status);
+  if(!active && !Object.keys(recs).length) return "";
+  const stamp=(labelKey,p)=> p ? `<div class="fl-line">
+      <span class="fl-k">${esc(t(labelKey))}</span>
+      <span class="fl-v" dir="auto">${esc(fmtDate(p.time))}</span>
+      <span class="fl-coords">📍 ${esc(p.lat)}, ${esc(p.lng)}</span>
+      <a href="${gmapLink(p)}" target="_blank" rel="noopener">${esc(t("view_map"))} ↗</a>
+      ${p.acc!=null?`<span class="small muted">±${esc(p.acc)} m</span>`:""}
+      ${p.sim?`<span class="fl-sim">${esc(t("field_sim"))}</span>`:""}
+    </div>` : "";
+  const rows=members.map(name=>{
+    const rec=recs[name]||{};
+    const isMe=(name===r);
+    let chip="", btn="";
+    if(rec.end){
+      chip=`<span class="st done" style="padding:1px 8px">✔ ${esc(t("field_done"))}</span>`;
+    }else if(rec.start){
+      chip=`<span class="st work" style="padding:1px 8px">${esc(t("field_inprog"))}</span>`;
+      if(isMe&&active) btn=`<button class="btn danger" data-field="end">⏹ ${esc(t("field_end"))}</button>`;
+    }else{
+      chip=`<span class="small muted">— ${esc(t("field_pending"))}</span>`;
+      if(isMe&&active) btn=`<button class="btn good" data-field="start">▶ ${esc(t("field_start"))}</button>`;
+    }
+    const dur=(rec.start&&rec.end)
+      ? `<div class="fl-line"><span class="fl-k">${esc(t("field_dur"))}</span><span class="fl-v">${esc(fmtDur(rec.end.time-rec.start.time))}</span></div>` : "";
+    return `<div class="fieldrow">
+      <div class="fl-top">
+        <span class="fl-name" dir="auto">${esc(roleName(name))}${isMe?` <span class="internal-tag">${esc(t("field_you"))}</span>`:""}</span>
+        ${chip}
+      </div>
+      ${stamp("field_started_l",rec.start)}${stamp("field_ended_l",rec.end)}${dur}
+      ${btn?`<div class="btnrow" style="margin-top:8px">${btn}</div>`:""}
+    </div>`;
+  }).join("");
+  return `<div class="section">
+    <h2>🛰️ ${esc(t("field_h"))}</h2>
+    <div class="note">${esc(t("field_note"))}</div>
+    <div id="fieldMsg" class="small muted" style="margin-top:8px;display:none"></div>
+    ${rows}
+  </div>`;
+}
 function reviewPanel(rq){
   const line=(stage,ok,byList,gl)=>{
     const members=reviewersOfStage(stage);
@@ -1850,6 +1972,31 @@ function bindDetail(){
       rq.changeReq=null;
       save(); render();
     }
+  });
+
+  // field tracking — the member themselves stamps start / finish (time + location)
+  document.querySelectorAll("[data-field]").forEach(el=>el.onclick=()=>{
+    const what=el.dataset.field, me=myRole();
+    if(!isFieldMember(rq,me) || !FIELD_STAGES.includes(rq.status)) return;
+    el.disabled=true;
+    const msg=document.getElementById("fieldMsg");
+    if(msg){ msg.style.display=""; msg.textContent="⏳ "+t("field_locating"); }
+    captureLocation(rq, p=>{
+      rq.field=rq.field||{};
+      const rec=rq.field[me]||(rq.field[me]={});
+      /* language-neutral stamp so the audit trail reads the same in both languages */
+      const where=`📍 ${p.lat}, ${p.lng}${p.sim?" · simulated / تجريبي":""}`;
+      if(what==="start"){
+        if(rec.start){ save(); render(); return; }
+        rec.start=p;
+        addTl(rq,"Started field work.","بدأ العمل الميداني.",where);
+      }else{
+        if(!rec.start || rec.end){ save(); render(); return; }
+        rec.end=p;
+        addTl(rq,"Finished field work.","أنهى العمل الميداني.",where+" · "+fmtDur(rec.end.time-rec.start.time));
+      }
+      save(); render();
+    });
   });
 
   // assign chips
