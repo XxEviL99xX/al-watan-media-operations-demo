@@ -545,8 +545,8 @@ const DICT = {
 
   /* field tracking (shooting crew + editorial staff on location) */
   field_h:        {en:"Field tracking — start / finish", ar:"التتبع الميداني — بدء / إنهاء"},
-  field_note:     {en:"Only the field crew (shooting team + reporter / journalist / Heba) records start and finish. Each click stores the date, time and location.",
-                   ar:"الطاقم الميداني فقط (فريق التصوير + المراسل / الصحفي / هبة) يسجّل البدء والإنهاء. كل ضغطة تسجّل التاريخ والوقت والموقع."},
+  field_note:     {en:"Only the field crew (shooting team + reporter / journalist / Heba) records start and finish, and only during the Shooting stage. Each click stores the date, time and location.",
+                   ar:"الطاقم الميداني فقط (فريق التصوير + المراسل / الصحفي / هبة) يسجّل البدء والإنهاء، وفي مرحلة التصوير فقط. كل ضغطة تسجّل التاريخ والوقت والموقع."},
   field_start:    {en:"Start field work", ar:"بدء العمل الميداني"},
   field_end:      {en:"Finish field work", ar:"إنهاء العمل الميداني"},
   field_started_l:{en:"Started", ar:"البدء"},
@@ -704,7 +704,7 @@ const STAGE_GUIDE = {
   shooting:{
     d:{en:"Filming on location — Shooting (التصوير).",ar:"التصوير في الموقع."},
     n:{en:"Next stage → Editing (المونتاج).",ar:"المرحلة التالية ← المونتاج."},
-    o:{en:"When shooting is done, mark the stage done.",ar:"عند انتهاء التصوير، أنهِ المرحلة."}},
+    o:{en:"Field crew: record your start, then your finish — the stage can be ended after that.",ar:"الطاقم الميداني: سجّل بدءك ثم إنهاءك — بعدها يمكن إنهاء المرحلة."}},
   editing:{
     d:{en:"Cut, graphics & audio by the video editor — Editing (المونتاج).",ar:"القص والغرافيك والصوت بواسطة فني المونتاج (المونتاج)."},
     n:{en:"Next → Internal review (both stages).",ar:"التالي ← المراجعة الداخلية (المرحلتان)."},
@@ -951,8 +951,9 @@ function editorialStaffParts(rq){
   return parts;
 }
 /* ---------- field tracking (start / finish with date, time & location) ---------- */
-/* only the crew that physically goes on location — the editor works in-house */
-const FIELD_STAGES=["in_progress","shooting"];
+/* only the crew that physically goes on location — the editor works in-house.
+   Tracking belongs to the Shooting stage only; "In progress" is prep/planning. */
+const FIELD_STAGES=["shooting"];
 function fieldMembers(rq){
   const a=(rq&&rq.assign)||{};
   return [...(a.shooting||[]), a.reporter, a.journalist, a.heba].filter(Boolean);
