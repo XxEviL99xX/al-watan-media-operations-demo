@@ -416,8 +416,8 @@ const DICT = {
   forward_head:   {en:"Fix & forward to Head", ar:"تعديل وإرسال للرئيس"},
   send_requester: {en:"Send back to Requester", ar:"إرجاع لمقدم الطلب"},
   mark_done:      {en:"Mark stage done", ar:"إنهاء المرحلة"},
-  approve_g1:     {en:"Approve (Group 1)", ar:"موافقة (مجموعة ١)"},
-  approve_g2:     {en:"Approve (Group 2)", ar:"موافقة (مجموعة ٢)"},
+  approve_g1:     {en:"Approve — Direction & Production", ar:"اعتماد — الإخراج والإنتاج"},
+  approve_g2:     {en:"Approve — Editorial & Publishing", ar:"اعتماد — التحرير والنشر"},
   publish:        {en:"Publish", ar:"نشر"},
   client_approve: {en:"Approve", ar:"موافقة"},
   client_changes: {en:"Request changes", ar:"طلب تعديلات"},
@@ -449,8 +449,8 @@ const DICT = {
 
   /* revision routing */
   routing_h:      {en:"Revision routing — pick the restart stage", ar:"توجيه التعديلات — اختر مرحلة الاستئناف"},
-  routing_note:   {en:"The team stays the same. Any revision re-passes full internal review (both groups; prior approvals cleared).",
-                   ar:"يبقى الفريق كما هو. أي تعديل يعيد المرور بالمراجعة الداخلية كاملة (المجموعتان؛ تُلغى الموافقات السابقة)."},
+  routing_note:   {en:"The team stays the same. Any revision re-passes full internal review (both stages; prior approvals cleared).",
+                   ar:"يبقى الفريق كما هو. أي تعديل يعيد المرور بالمراجعة الداخلية كاملة (المرحلتان؛ تُلغى الموافقات السابقة)."},
   restart_ip:     {en:"Restart at In progress", ar:"الاستئناف من: قيد التنفيذ"},
   restart_sh:     {en:"Restart at Shooting", ar:"الاستئناف من: التصوير"},
   restart_ed:     {en:"Restart at Editing", ar:"الاستئناف من: المونتاج"},
@@ -459,12 +459,17 @@ const DICT = {
   client_link_l:  {en:"Client portal link", ar:"رابط بوابة العميل"},
   client_only_note:{en:"Clients see a simplified view — their own request only, no internal comments or team names.",
                     ar:"يرى العملاء واجهة مبسّطة — طلبهم فقط، بدون تعليقات داخلية أو أسماء الفريق."},
-  review_groups:  {en:"Internal review groups", ar:"مجموعتا المراجعة الداخلية"},
-  g1_l:           {en:"Group 1 (any one approves)", ar:"المجموعة ١ (موافقة أي عضو)"},
-  g2_l:           {en:"Group 2 (any one approves)", ar:"المجموعة ٢ (موافقة أي عضو)"},
-  g1_ok:          {en:"Group 1 approved", ar:"وافقت المجموعة ١"},
-  g2_ok:          {en:"Group 2 approved", ar:"وافقت المجموعة ٢"},
-  awaiting_g:     {en:"Awaiting approval", ar:"بانتظار الموافقة"},
+  review_groups:  {en:"Internal review — two stages", ar:"المراجعة الداخلية — مرحلتان"},
+  g1_l:           {en:"Stage 1 · Direction & Production (either reviewer approves)", ar:"المرحلة ١ · الإخراج والإنتاج (يعتمد أيّ مراجع)"},
+  g2_l:           {en:"Stage 2 · Editorial & Publishing (either reviewer approves)", ar:"المرحلة ٢ · التحرير والنشر (يعتمد أيّ مراجع)"},
+  g1_ok:          {en:"Stage 1 approved", ar:"اعتُمدت المرحلة ١"},
+  g2_ok:          {en:"Stage 2 approved", ar:"اعتُمدت المرحلة ٢"},
+  awaiting_g:     {en:"Awaiting a reviewer", ar:"بانتظار مراجع"},
+  approved_by:    {en:"approved by", ar:"اعتمدها"},
+  may_also_approve:{en:"may also approve (optional)", ar:"يمكنه الاعتماد أيضًا (اختياري)"},
+  review_stage_l: {en:"Review stage", ar:"مرحلة المراجعة"},
+  reviewers_note: {en:"They log in individually. Each stage needs one approval; either reviewer in the stage can give it.",
+                   ar:"يسجّلون الدخول كلٌّ على حدة. كل مرحلة تحتاج اعتمادًا واحدًا؛ يكفي أن يعتمدها أيّ مراجع في المرحلة."},
 
   no_requests:    {en:"No requests yet.", ar:"لا توجد طلبات بعد."},
   archived_empty: {en:"Nothing archived yet.", ar:"لا يوجد شيء في الأرشيف بعد."},
@@ -474,6 +479,7 @@ const DICT = {
   ok:             {en:"Confirm", ar:"تأكيد"},
   org_roles:      {en:"Roles", ar:"الأدوار"},
   team_members:   {en:"Production team members", ar:"أعضاء فريق الإنتاج"},
+  review_panel:   {en:"Internal review panel", ar:"لجنة المراجعة الداخلية"},
   team_note:      {en:"They log in individually and act only on their own stage.",
                    ar:"يسجّلون الدخول كلٌّ على حدة ويتصرّفون في مرحلتهم فقط."},
   assigned_to_you:{en:"Assigned to you", ar:"مُسنَد إليك"},
@@ -536,17 +542,36 @@ const DICT = {
 function t(k){ const e=DICT[k]; return e ? e[state.lang] : k; }
 
 /* ---------- roles ---------- */
-const ROLES = ["requester","marketing","head","journal","review1","review2","client"];
+const ROLES = ["requester","marketing","head","journal","client"];
 const ROLE_LABEL = {
   requester:{en:"Requester",ar:"مقدم الطلب",ic:"📝"},
   marketing:{en:"Marketing Manager",ar:"مدير التسويق",ic:"📣"},
   head:{en:"Production Head",ar:"رئيس قسم الإنتاج",ic:"🎬"},
   journal:{en:"Editorial Manager",ar:"مسؤول المحررين",ic:"🗞️"},
   team:{en:"Production Team",ar:"فريق الإنتاج",ic:"🎥"},
-  review1:{en:"Internal Reviewer · Group 1",ar:"مراجع داخلي · مجموعة ١",ic:"✅"},
-  review2:{en:"Internal Reviewer · Group 2",ar:"مراجع داخلي · مجموعة ٢",ic:"✅"},
+  /* review1/review2 are no longer login roles — they are the two review *stages*.
+     Kept here so timeline/owner labels for the stage kinds still render nicely. */
+  review1:{en:"Direction & Production review",ar:"مراجعة الإخراج والإنتاج",ic:"🎬"},
+  review2:{en:"Editorial & Publishing review",ar:"مراجعة التحرير والنشر",ic:"📰"},
   client:{en:"Client",ar:"العميل",ic:"👤"},
 };
+/* Four reviewer accounts across two stages (Ahmed's rule). Either reviewer in a
+   stage can approve; both stages must approve one-each for the video to reach the
+   client. Titles are the roles Ahmed named; emails are the real review accounts. */
+const REVIEWERS = {
+  rev_direction: {stage:"review1", en:"Direction Manager",  ar:"مدير الإخراج",  email:"nnasser@alwatannews.net",     user:"nnasser"},
+  rev_production:{stage:"review1", en:"Production Officer",  ar:"مسؤول الإنتاج", email:"m.nazeeh@alwatannews.net",    user:"m.nazeeh"},
+  rev_editorial: {stage:"review2", en:"Editorial Officer",  ar:"مسؤول التحرير", email:"zalmushaigri@alwatannews.net", user:"zalmushaigri"},
+  rev_publishing:{stage:"review2", en:"Publishing Officer", ar:"مسؤول النشر",   email:"aabdulla@alwatannews.net",    user:"aabdulla"},
+};
+const REVIEW_STAGE = {
+  review1:{en:"Direction & Production review", ar:"مراجعة الإخراج والإنتاج", ic:"🎬"},
+  review2:{en:"Editorial & Publishing review", ar:"مراجعة التحرير والنشر", ic:"📰"},
+};
+function isReviewer(id){ return !!REVIEWERS[id]; }
+function reviewersOfStage(stage){ return Object.keys(REVIEWERS).filter(n=>REVIEWERS[n].stage===stage); }
+function stageOf(id){ return REVIEWERS[id] ? REVIEWERS[id].stage : null; }
+function stageLabel(stage){ return REVIEW_STAGE[stage] ? REVIEW_STAGE[stage][state.lang] : stage; }
 const KIND_LABEL = {
   producer:{en:"Producer",ar:"منتج",ic:"🎬"},
   shooter:{en:"Shooting Team",ar:"فريق التصوير",ic:"📹"},
@@ -555,9 +580,12 @@ const KIND_LABEL = {
   journalist:{en:"Journalist",ar:"صحفي",ic:"📰"},
   heba:{en:"Heba",ar:"هبة",ic:"🎙️"},
 };
-function kindOf(id){ if(ROLES.includes(id)) return id; return (typeof STAFF!=="undefined" && STAFF[id]) ? STAFF[id] : "staff"; }
-function isStaff(id){ return !ROLES.includes(id); }
+function kindOf(id){ if(ROLES.includes(id)) return id; if(REVIEWERS[id]) return REVIEWERS[id].stage; return (typeof STAFF!=="undefined" && STAFF[id]) ? STAFF[id] : "staff"; }
+/* "staff" = production team members (assigned per-request). Reviewers are org-level
+   accounts, not production staff, so they are excluded here. */
+function isStaff(id){ return !ROLES.includes(id) && !REVIEWERS[id]; }
 function roleName(r){
+  if(REVIEWERS[r]) return REVIEWERS[r][state.lang];   /* reviewer job title */
   if(ROLE_LABEL[r]) return ROLE_LABEL[r][state.lang];
   const k = kindOf(r);
   return KIND_LABEL[k] ? (r+" · "+KIND_LABEL[k][state.lang]) : r;
@@ -566,6 +594,7 @@ function avatarBg(id){
   const m={requester:"#2f8f9e",marketing:"#6d5ac4",head:"#1f3a5f",journal:"#4f63c4",
            review1:"#4f63c4",review2:"#3f53b4",client:"#5a6b8c"};
   if(m[id]) return m[id];
+  if(REVIEWERS[id]) return REVIEWERS[id].stage==="review1"?"#4f63c4":"#3f53b4";
   const k=STAFF[id]; return k==="producer"?"#2f9e6f":k==="shooter"?"#8a5ac4":k==="editor"?"#2f8f9e":"#d9822b";
 }
 
@@ -649,12 +678,12 @@ const STAGE_GUIDE = {
     o:{en:"When shooting is done, mark the stage done.",ar:"عند انتهاء التصوير، أنهِ المرحلة."}},
   editing:{
     d:{en:"Cut, graphics & audio by the video editor — Editing (المونتاج).",ar:"القص والغرافيك والصوت بواسطة فني المونتاج (المونتاج)."},
-    n:{en:"Next → Internal review (both groups).",ar:"التالي ← المراجعة الداخلية (المجموعتان)."},
+    n:{en:"Next → Internal review (both stages).",ar:"التالي ← المراجعة الداخلية (المرحلتان)."},
     o:{en:"When editing is done, send it to internal review.",ar:"عند انتهاء المونتاج، أرسِله للمراجعة الداخلية."}},
   internal_review:{
-    d:{en:"Internal review — one approval from each of the two groups.",ar:"المراجعة الداخلية — موافقة من كل مجموعة."},
-    n:{en:"Both approve → Client version. Any change → Revision routing.",ar:"موافقة الاثنتين ← نسخة العميل. أي تعديل ← توجيه التعديلات."},
-    o:{en:"Approve for your group, or Request changes (routed to the Head).",ar:"وافق لمجموعتك، أو اطلب تعديلات (تُحال للرئيس)."}},
+    d:{en:"Internal review — two stages (Direction & Production, then Editorial & Publishing); one approval each.",ar:"المراجعة الداخلية — مرحلتان (الإخراج والإنتاج، ثم التحرير والنشر)؛ اعتماد واحد لكلٍّ."},
+    n:{en:"Both stages approve → Client version. Any change → Revision routing.",ar:"اعتماد المرحلتين ← نسخة العميل. أي تعديل ← توجيه التعديلات."},
+    o:{en:"Approve for your stage, or Request changes (routed to the Head).",ar:"اعتمد لمرحلتك، أو اطلب تعديلات (تُحال للرئيس)."}},
   revision_routing:{
     d:{en:"The Production Head decides which stage to restart at.",ar:"يقرر رئيس الإنتاج مرحلة الاستئناف."},
     n:{en:"Jumps to the chosen stage; team stays; review repeats.",ar:"ينتقل للمرحلة المختارة؛ الفريق كما هو؛ تُعاد المراجعة."},
@@ -703,10 +732,6 @@ const ROSTER = {
   journalists:["Noor Abdulla","Salman Isa"],
   hebas:["Heba"], /* Heba is one real person — role title TBD by Ahmed */
 };
-const GROUPS = {
-  g1:["nnasser@alwatannews.net","m.nazeeh@alwatannews.net"],
-  g2:["zalmushaigri@alwatannews.net","aabdulla@alwatannews.net"],
-};
 /* individual staff accounts (each logs in on their own) */
 const STAFF = {};
 ROSTER.producers.forEach(n=>STAFF[n]="producer");
@@ -718,11 +743,15 @@ ROSTER.hebas.forEach(n=>STAFF[n]="heba");
 
 /* demo credentials — every account uses the same demo password */
 const DEMO_PASS = "demo123";
-function userNameFor(id){ return ROLES.includes(id) ? id : id.toLowerCase().replace(/\s+/g,"."); }
+function userNameFor(id){
+  if(ROLES.includes(id)) return id;
+  if(REVIEWERS[id]) return REVIEWERS[id].user;
+  return id.toLowerCase().replace(/\s+/g,".");
+}
 function findUserByCreds(u,p){
   if(p!==DEMO_PASS) return null;
   u=(u||"").trim().toLowerCase();
-  return [...ROLES, ...Object.keys(STAFF)].find(id=>userNameFor(id)===u) || null;
+  return [...ROLES, ...Object.keys(REVIEWERS), ...Object.keys(STAFF)].find(id=>userNameFor(id)===u) || null;
 }
 
 /* ---------- state ---------- */
@@ -735,7 +764,9 @@ function seed(){
     coverage:"comprehensive", eventType:"editorial",
     locationText:"", locationLat:null, locationLng:null, attachments:[], notes:"",
     assign:{producers:[],shooting:[],editors:[],reporterNeeded:false,journalistNeeded:false,hebaNeeded:false,reporterChosen:false,reporter:null,journalist:null,heba:null},
-    g1:false, g2:false, clientLink:null, comments:[], timeline:[]
+    /* g1/g2 = stage satisfied (≥1 approval); g1By/g2By = reviewer ids who approved that stage
+       (a list, since either/both reviewers in a stage may approve — one is enough to satisfy it) */
+    g1:false, g2:false, g1By:[], g2By:[], clientLink:null, comments:[], timeline:[]
   }, o);
   const reqs = [
     mk({ id:1, title:"Bahrain Airshow — opening coverage", client:"Ministry of Transport",
@@ -745,13 +776,13 @@ function seed(){
       notes:"Full opening-day coverage: aerial displays, VIP arrivals, 90-sec highlight reel + social cuts.",
       requester:"requester", status:"internal_review", created:now-86400000*4,
       assign:{producers:[],shooting:["Rashid Al Saleh"],editors:["Mohammed Khalid"],reporterNeeded:true,journalistNeeded:false,reporterChosen:true,reporter:"Fatima Noor",journalist:null},
-      g1:true, g2:false,
+      g1:true, g2:false, g1By:["rev_direction"], g2By:[],
       timeline:[
         tl("requester","Submitted the request.","قدّم الطلب.", now-86400000*4),
         tl("marketing","Approved — moved to Head.","موافقة — أُحيل للرئيس.", now-86400000*4+3600000),
         tl("head","Approved & assigned team.","موافقة وتعيين الفريق.", now-86400000*3),
         tl("team","Editing done — sent to internal review.","انتهى المونتاج — أُرسل للمراجعة الداخلية.", now-3600000*6),
-        tl("review1","Group 1 approved.","وافقت المجموعة ١.", now-3600000*2),
+        tl("rev_direction","Approved — Direction & Production review (Stage 1).","اعتمد — مراجعة الإخراج والإنتاج (المرحلة ١).", now-3600000*2),
       ]}),
     mk({ id:2, title:"Ramadan brand promo", client:"Batelco",
       contact:"Omar Fikri", phone:"+973 3611 5544", email:"marketing@batelco.com",
@@ -777,8 +808,9 @@ function seed(){
   return { lang:"en", theme:"light", filter:"all", muted:false, currentUser:null, view:"login", activeReq:null, notiOpen:false,
     seq:4, requests:reqs, notifications:[
       noti("marketing",3,"New request awaiting your approval.","طلب جديد بانتظار موافقتك."),
-      noti("review1",1,"A request is awaiting internal review.","طلب بانتظار المراجعة الداخلية."),
-      noti("review2",1,"A request is awaiting internal review.","طلب بانتظار المراجعة الداخلية."),
+      /* request 1: Stage 1 already approved — Stage 2 (Editorial & Publishing) reviewers still owe a decision */
+      noti("rev_editorial",1,"A video is awaiting Stage 2 review (Editorial & Publishing).","فيديو بانتظار المرحلة ٢ (التحرير والنشر)."),
+      noti("rev_publishing",1,"A video is awaiting Stage 2 review (Editorial & Publishing).","فيديو بانتظار المرحلة ٢ (التحرير والنشر)."),
     ]};
 }
 function tl(actor,en,ar,time){ return {actor, en, ar, time: time||Date.now()}; }
@@ -787,7 +819,18 @@ function noti(role,reqId,en,ar){ return {id:uid(), role, reqId, en, ar, read:fal
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function migrateSavedWorkflow(saved){
   let changed=false;
+  /* v6 task 5: review1/review2 became two review *stages* with four named reviewers.
+     Old logins/notifications keyed on "review1"/"review2" get remapped to real reviewers. */
+  const legacyRev={review1:"rev_direction", review2:"rev_editorial"};
+  if(legacyRev[saved.currentUser]){ saved.currentUser=legacyRev[saved.currentUser]; changed=true; }
+  (saved.notifications||[]).forEach(n=>{
+    if(legacyRev[n.role]){ n.role=legacyRev[n.role]; changed=true; }
+  });
   (saved.requests||[]).forEach(rq=>{
+    /* g1By/g2By: earlier builds stored a single id (or null); normalise to an array */
+    const toArr=(v,fallback)=> v==null ? (fallback||[]) : (Array.isArray(v)?v:[v]);
+    if(!Array.isArray(rq.g1By)){ rq.g1By = toArr(rq.g1By, rq.g1?["rev_direction"]:[]); changed=true; }
+    if(!Array.isArray(rq.g2By)){ rq.g2By = toArr(rq.g2By, rq.g2?["rev_editorial"]:[]); changed=true; }
     const assign=rq.assign;
     if(assign && assign.journalist===undefined){ assign.journalist=null; changed=true; }
     if(assign && assign.journalistNeeded===undefined){ assign.journalistNeeded=false; changed=true; }
@@ -909,6 +952,11 @@ function isOwner(req, uid){
   const kinds = STATUS[req.status].owner || [];
   const k = kindOf(uid);
   if(!kinds.includes(k)) return false;
+  /* a reviewer stays flagged (⚡ / "needs my action") until THEY personally approve —
+     even if a colleague already covered their stage they may still optionally approve
+     while the request is in review; the flag also clears once review completes (leaves this status) */
+  if(k==="review1") return isReviewer(uid) && !(req.g1By||[]).includes(uid);
+  if(k==="review2") return isReviewer(uid) && !(req.g2By||[]).includes(uid);
   if(k==="producer") return req.assign.producers.includes(uid);
   if(k==="shooter")  return req.assign.shooting.includes(uid);
   if(k==="editor")   return req.assign.editors.includes(uid);
@@ -927,11 +975,18 @@ function ownersOf(req){
     else if(k==="reporter"){ if(req.assign.reporter) out.push(req.assign.reporter); }
     else if(k==="journalist"){ if(req.assign.journalist) out.push(req.assign.journalist); }
     else if(k==="heba"){ if(req.assign.heba) out.push(req.assign.heba); }
+    else if(k==="review1"){ if(!req.g1) out.push(...reviewersOfStage("review1")); }
+    else if(k==="review2"){ if(!req.g2) out.push(...reviewersOfStage("review2")); }
     else out.push(k);
   });
   return [...new Set(out)];
 }
 function notifyOwners(req,en,ar){ ownersOf(req).forEach(uid=>pushNoti(uid,req,en,ar)); }
+/* notify every reviewer of a stage ("review1"/"review2"), or all reviewers if omitted */
+function notifyReviewers(req,en,ar,stage){
+  const targets = stage ? reviewersOfStage(stage) : Object.keys(REVIEWERS);
+  targets.forEach(uid=>pushNoti(uid,req,en,ar));
+}
 function ownerLabel(req){
   const ids = ownersOf(req);
   if(ids.length) return ids.map(roleName).join(" / ");
@@ -1007,6 +1062,7 @@ function renderTopbar(){
   const opt = x=>`<option value="${esc(x)}" ${x===r?"selected":""}>${esc(roleName(x))}</option>`;
   const roleOpts =
     `<optgroup label="${esc(t("org_roles"))}">${ROLES.map(opt).join("")}</optgroup>`+
+    `<optgroup label="${esc(t("review_panel"))}">${Object.keys(REVIEWERS).map(opt).join("")}</optgroup>`+
     `<optgroup label="${esc(t("team_members"))}">${Object.keys(STAFF).map(opt).join("")}</optgroup>`;
   const nav = (v,label)=>`<button class="navlink ${state.view===v?"active":""}" data-nav="${v}">${esc(label)}</button>`;
   tb.innerHTML =
@@ -1079,11 +1135,11 @@ function toggleLang(){ state.lang = state.lang==="en"?"ar":"en"; save(); render(
 function viewLogin(){
   const acct = id=>{
     const isRole=ROLES.includes(id);
-    const ic  = isRole?ROLE_LABEL[id].ic:KIND_LABEL[STAFF[id]].ic;
-    const name= isRole?roleName(id):id;
-    const sub = isRole?roleName(id):KIND_LABEL[STAFF[id]][state.lang];
-    const primary = isRole?name:id;      // top line
-    const secondary = isRole?roleHint(id):KIND_LABEL[STAFF[id]][state.lang];
+    const isRev=REVIEWERS[id];
+    let ic, primary, secondary;
+    if(isRole){ ic=ROLE_LABEL[id].ic; primary=roleName(id); secondary=roleHint(id); }
+    else if(isRev){ ic=REVIEW_STAGE[isRev.stage].ic; primary=roleName(id); secondary=stageLabel(isRev.stage); }
+    else { ic=KIND_LABEL[STAFF[id]].ic; primary=id; secondary=KIND_LABEL[STAFF[id]][state.lang]; }
     return `<button class="acct" data-fill="${esc(userNameFor(id))}">
         <span class="avatar" style="background:${avatarBg(id)}">${ic}</span>
         <span style="min-width:0">
@@ -1117,6 +1173,9 @@ function viewLogin(){
       <div class="acct-title">${esc(t("quick_login"))}</div>
       <div class="acct-title" style="margin-top:14px;color:var(--brand2)">${esc(t("org_roles"))}</div>
       <div class="acct-grid">${ROLES.map(acct).join("")}</div>
+      <div class="acct-title" style="margin-top:16px;color:var(--brand2)">${esc(t("review_panel"))}</div>
+      <div class="small muted" style="margin:2px 0">${esc(t("reviewers_note"))}</div>
+      <div class="acct-grid">${Object.keys(REVIEWERS).map(acct).join("")}</div>
       <div class="acct-title" style="margin-top:16px;color:var(--brand2)">${esc(t("team_members"))}</div>
       <div class="small muted" style="margin:2px 0">${esc(t("team_note"))}</div>
       <div class="acct-grid">${Object.keys(STAFF).map(acct).join("")}</div>
@@ -1130,8 +1189,6 @@ function roleHint(r){
     head:{en:"Final approval · assigns team · routing",ar:"الموافقة النهائية · تعيين الفريق · التوجيه"},
     journal:{en:"Selects reporters / presenters",ar:"يختار المراسلين / المقدّمين"},
     team:{en:"Shooting · editing · publishing",ar:"التصوير · المونتاج · النشر"},
-    review1:{en:"Internal review — Group 1",ar:"المراجعة الداخلية — مجموعة ١"},
-    review2:{en:"Internal review — Group 2",ar:"المراجعة الداخلية — مجموعة ٢"},
     client:{en:"Reviews & approves the final video",ar:"يراجع الفيديو النهائي ويعتمده"},
   }[r]; return h?h[state.lang]:"";
 }
@@ -1594,8 +1651,16 @@ function actionButtons(rq, r){
   if(r==="head" && s==="head_approval"){ B.push(b("hd_approve","approve","good")); B.push(b("hd_changes","request_changes","warn")); }
   if(r==="marketing" && s==="changes_marketing"){ B.push(b("mk_forward","forward_head","good")); B.push(b("mk_toreq","send_requester","warn")); }
   if(isStaff(r) && isOwner(rq,r) && ["in_progress","shooting","editing"].includes(s)){ B.push(b("tm_done","mark_done","primary")); }
-  if(r==="review1" && s==="internal_review"){ if(!rq.g1) B.push(b("r1_ok","approve_g1","good")); B.push(b("r1_ch","request_changes","warn")); }
-  if(r==="review2" && s==="internal_review"){ if(!rq.g2) B.push(b("r2_ok","approve_g2","good")); B.push(b("r2_ch","request_changes","warn")); }
+  /* A reviewer keeps Approve/Request-changes until THEY personally act — even if a
+     stage-mate already satisfied the stage — for as long as the request is in review.
+     One approval per stage is enough to advance; a second from the same stage is optional. */
+  if(isReviewer(r) && s==="internal_review"){
+    const st=stageOf(r); const approvedList = st==="review1"?(rq.g1By||[]):(rq.g2By||[]);
+    if(!approvedList.includes(r)){
+      B.push(b(st==="review1"?"r1_ok":"r2_ok", st==="review1"?"approve_g1":"approve_g2", "good"));
+      B.push(b(st==="review1"?"r1_ch":"r2_ch", "request_changes", "warn"));
+    }
+  }
   if(r==="client" && s==="client_version"){ B.push(b("cl_ok","client_approve","good")); B.push(b("cl_ch","client_changes","warn")); B.push(b("cl_rej","client_reject","danger")); }
   if(isStaff(r) && isOwner(rq,r) && s==="ready_to_publish"){ B.push(b("tm_publish","publish","primary")); }
   if(r==="client" && s==="ready_to_publish"){ B.push(b("cl_final","final_change","warn")); B.push(b("cl_rej","client_reject","danger")); }
@@ -1676,16 +1741,29 @@ function changeReqPanel(rq, r){
   </div>`;
 }
 function reviewPanel(rq){
-  const line=(ok,label,members,gl)=>`
-    <div style="margin-bottom:10px">
-      <div style="font-weight:700">${esc(t(gl))} ${ok?`<span class="st done" style="padding:1px 8px">✔ ${esc(t(gl==="g1_l"?"g1_ok":"g2_ok"))}</span>`:`<span class="small muted">— ${esc(t("awaiting_g"))}</span>`}</div>
-      <div class="small muted">${members.join(" · ")}</div>
+  const line=(stage,ok,byList,gl)=>{
+    const members=reviewersOfStage(stage);
+    const approvers=(byList||[]);
+    const pending=members.filter(m=>!approvers.includes(m));
+    const status = ok
+      ? `<span class="st done" style="padding:1px 8px">✔ ${esc(t(gl==="g1_l"?"g1_ok":"g2_ok"))}</span>`
+      : `<span class="small muted">— ${esc(t("awaiting_g"))}</span>`;
+    const who = approvers.length
+      ? `<div class="small" style="color:var(--assign);font-weight:600" dir="auto">✔ ${esc(t("approved_by"))}: ${approvers.map(m=>esc(roleName(m))).join(" · ")}</div>` : "";
+    /* stage already satisfied but request still in review → the other reviewer MAY still approve */
+    const canStill = (ok && pending.length && rq.status==="internal_review")
+      ? `<div class="small muted" dir="auto">${pending.map(m=>esc(roleName(m))).join(" · ")} — ${esc(t("may_also_approve"))}</div>` : "";
+    return `<div style="margin-bottom:12px">
+      <div style="font-weight:700" dir="auto">${esc(t(gl))} ${status}</div>
+      <div class="small muted" dir="auto">${members.map(m=>esc(roleName(m))).join(" · ")}</div>
+      ${who}${canStill}
     </div>`;
+  };
   return `<div class="section">
     <h2>${esc(t("review_groups"))}</h2>
-    ${line(rq.g1,"",GROUPS.g1,"g1_l")}
-    ${line(rq.g2,"",GROUPS.g2,"g2_l")}
-    <div class="note">${state.lang==="ar"?"يلزم موافقة عضو واحد من كل مجموعة. أي تعديل يعيد الطلب لكلتا المجموعتين.":"One approval from each group is required. Any revision returns the request to both groups."}</div>
+    ${line("review1",rq.g1,rq.g1By,"g1_l")}
+    ${line("review2",rq.g2,rq.g2By,"g2_l")}
+    <div class="note">${state.lang==="ar"?"يلزم اعتماد واحد من كل مرحلة (يكفي أيّ مراجع في المرحلة). أي طلب تعديل يعيد الطلب إلى المرحلتين معًا.":"One approval is required from each stage (either reviewer in the stage suffices). Any change request returns the request to both stages."}</div>
   </div>`;
 }
 function timelinePanel(rq){
@@ -1853,27 +1931,34 @@ function doAction(act, rq, note){
     case "tm_done": {
       const next = rq.status==="in_progress"?"shooting":(rq.status==="shooting"?"editing":"internal_review");
       if(next==="internal_review"){
-        rq.g1=false; rq.g2=false;
-        addTl(rq,"Editing done — sent to internal review.","انتهى المونتاج — أُرسل للمراجعة الداخلية.");
+        rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
+        addTl(rq,"Editing done — sent to internal review (two stages).","انتهى المونتاج — أُرسل للمراجعة الداخلية (مرحلتان).");
         rq.status="internal_review";
-        pushNoti("review1",rq,"A request awaits internal review.","طلب بانتظار المراجعة الداخلية.");
-        pushNoti("review2",rq,"A request awaits internal review.","طلب بانتظار المراجعة الداخلية.");
+        notifyReviewers(rq,"A video is awaiting internal review.","فيديو بانتظار المراجعة الداخلية.");
       }else{
         addTl(rq,"Stage completed — moved to "+statusLabel(next)+".","اكتملت المرحلة — الانتقال إلى "+statusLabel(next)+".");
         rq.status=next; notifyOwners(rq,"Next production stage is assigned to you.","المرحلة التالية مُسنَدة إليك.");
       }
       break; }
     case "r1_ok":
-      rq.g1=true; addTl(rq,"Group 1 approved.","وافقت المجموعة ١."); checkReviewComplete(rq); break;
+      if(!Array.isArray(rq.g1By)) rq.g1By=[];
+      if(!rq.g1By.includes(myRole())) rq.g1By.push(myRole());
+      rq.g1=true;
+      addTl(rq,"Approved — Direction & Production review (Stage 1).","اعتمد — مراجعة الإخراج والإنتاج (المرحلة ١)."); checkReviewComplete(rq); break;
     case "r2_ok":
-      rq.g2=true; addTl(rq,"Group 2 approved.","وافقت المجموعة ٢."); checkReviewComplete(rq); break;
-    case "r1_ch": case "r2_ch":
-      rq.g1=false; rq.g2=false;
-      addTl(rq,"Requested changes — routed to Production Head.","طلب تعديلات — أُحيل لرئيس الإنتاج.",note);
-      rq.status="revision_routing"; pushNoti("head",rq,"Internal review requested changes — pick restart stage.","طلبت المراجعة تعديلات — اختر مرحلة الاستئناف."); break;
+      if(!Array.isArray(rq.g2By)) rq.g2By=[];
+      if(!rq.g2By.includes(myRole())) rq.g2By.push(myRole());
+      rq.g2=true;
+      addTl(rq,"Approved — Editorial & Publishing review (Stage 2).","اعتمد — مراجعة التحرير والنشر (المرحلة ٢)."); checkReviewComplete(rq); break;
+    case "r1_ch": case "r2_ch": {
+      const stg = act==="r1_ch"?"review1":"review2";
+      rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
+      addTl(rq,"Requested changes ("+(stg==="review1"?"Direction & Production":"Editorial & Publishing")+") — routed to Production Head.",
+               "طلب تعديلات ("+(stg==="review1"?"الإخراج والإنتاج":"التحرير والنشر")+") — أُحيل لرئيس الإنتاج.",note);
+      rq.status="revision_routing"; pushNoti("head",rq,"Internal review requested changes — pick restart stage.","طلبت المراجعة تعديلات — اختر مرحلة الاستئناف."); break; }
     case "route_ip": case "route_sh": case "route_ed": {
       const map={route_ip:"in_progress",route_sh:"shooting",route_ed:"editing"};
-      const st=map[act]; rq.g1=false; rq.g2=false;
+      const st=map[act]; rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
       addTl(rq,"Revision routed — restart at "+statusLabel(st)+".","توجيه التعديل — الاستئناف من "+statusLabel(st)+".",note);
       rq.status=st; notifyOwners(rq,"Revision assigned — please redo your stage.","تم إسناد تعديل — يرجى إعادة مرحلتك."); break; }
     case "cl_ok":
@@ -1903,7 +1988,7 @@ function doAction(act, rq, note){
 function checkReviewComplete(rq){
   if(rq.g1 && rq.g2){
     rq.clientLink="https://portal.alwatannews.net/c/"+uid()+uid();
-    addTl(rq,"Both groups approved — client version shared.","وافقت المجموعتان — تمت مشاركة نسخة العميل.");
+    addTl(rq,"Both review stages approved — client version shared.","اعتُمدت مرحلتا المراجعة — تمت مشاركة نسخة العميل.");
     rq.status="client_version";
     pushNoti("client",rq,"A video is ready for your review.","فيديو جاهز لمراجعتك.");
   }
