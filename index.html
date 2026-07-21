@@ -543,23 +543,23 @@ const DICT = {
   g_client_wait:  {en:"Your video is being produced — we'll notify you when it's ready.",
                    ar:"جارٍ إنتاج الفيديو — سنُعلمك عند الجاهزية."},
 
-  /* field tracking (shooting crew + editorial staff on location) */
-  field_h:        {en:"Field tracking — start / finish", ar:"التتبع الميداني — بدء / إنهاء"},
-  field_note:     {en:"Only the field crew (shooting team + reporter / journalist / Heba) records start and finish, and only during the Shooting stage. Each click stores the date, time and location.",
-                   ar:"الطاقم الميداني فقط (فريق التصوير + المراسل / الصحفي / هبة) يسجّل البدء والإنهاء، وفي مرحلة التصوير فقط. كل ضغطة تسجّل التاريخ والوقت والموقع."},
-  field_start:    {en:"Start field work", ar:"بدء العمل الميداني"},
-  field_end:      {en:"Finish field work", ar:"إنهاء العمل الميداني"},
+  /* work tracking (each assigned member stamps their own stage) */
+  field_h:        {en:"Work tracking — start / finish", ar:"تتبّع العمل — بدء / إنهاء"},
+  field_note:     {en:"Every assigned member records start and finish on their own stage: the field crew (shooting team + reporter / journalist / Heba) at Shooting, the video editor at Editing. Each click stores the date, time and location.",
+                   ar:"كل عضو معيَّن يسجّل البدء والإنهاء في مرحلته: الطاقم الميداني (فريق التصوير + المراسل / الصحفي / هبة) في التصوير، وفني المونتاج في المونتاج. كل ضغطة تسجّل التاريخ والوقت والموقع."},
+  field_start:    {en:"Start work", ar:"بدء العمل"},
+  field_end:      {en:"Finish work", ar:"إنهاء العمل"},
   field_started_l:{en:"Started", ar:"البدء"},
   field_ended_l:  {en:"Finished", ar:"الإنهاء"},
   field_pending:  {en:"Not started yet", ar:"لم يبدأ بعد"},
-  field_inprog:   {en:"In the field now", ar:"في الموقع الآن"},
-  field_done:     {en:"Field work completed", ar:"اكتمل العمل الميداني"},
+  field_inprog:   {en:"Working now", ar:"قيد العمل الآن"},
+  field_done:     {en:"Work completed", ar:"اكتمل العمل"},
   field_dur:      {en:"Duration", ar:"المدة"},
   field_sim:      {en:"simulated location (demo)", ar:"موقع تجريبي (عرض)"},
   field_locating: {en:"Getting your location…", ar:"جارٍ تحديد موقعك…"},
   field_you:      {en:"you", ar:"أنت"},
-  field_gate:     {en:"Record your field start, then finish it — the stage can only be ended after that.",
-                   ar:"سجّل بدء عملك الميداني ثم إنهاءه — لا يمكن إنهاء المرحلة إلا بعد ذلك."},
+  field_gate:     {en:"Record your start, then your finish — the stage can only be ended after that.",
+                   ar:"سجّل بدء عملك ثم إنهاءه — لا يمكن إنهاء المرحلة إلا بعد ذلك."},
 
   /* dashboard filter tabs */
   tab_all:        {en:"All", ar:"الكل"},
@@ -708,7 +708,7 @@ const STAGE_GUIDE = {
   editing:{
     d:{en:"Cut, graphics & audio by the video editor — Editing (المونتاج).",ar:"القص والغرافيك والصوت بواسطة فني المونتاج (المونتاج)."},
     n:{en:"Next → Internal review (both stages).",ar:"التالي ← المراجعة الداخلية (المرحلتان)."},
-    o:{en:"When editing is done, send it to internal review.",ar:"عند انتهاء المونتاج، أرسِله للمراجعة الداخلية."}},
+    o:{en:"Record your start, then your finish — after that you can send it to internal review.",ar:"سجّل بدءك ثم إنهاءك — بعدها يمكنك إرساله للمراجعة الداخلية."}},
   internal_review:{
     d:{en:"Internal review — two stages (Direction & Production, then Editorial & Publishing); one approval each.",ar:"المراجعة الداخلية — مرحلتان (الإخراج والإنتاج، ثم التحرير والنشر)؛ اعتماد واحد لكلٍّ."},
     n:{en:"Both stages approve → Client version. Any change → Revision routing.",ar:"اعتماد المرحلتين ← نسخة العميل. أي تعديل ← توجيه التعديلات."},
@@ -814,6 +814,9 @@ function seed(){
                            end:  {time:now-86400000*3+3600000*13,lat:26.00098, lng:50.62057, acc:15, sim:false}},
         "Fatima Noor":    {start:{time:now-86400000*3+3600000*9, lat:26.00104, lng:50.62012, acc:18, sim:false},
                            end:  {time:now-86400000*3+3600000*12,lat:26.00110, lng:50.62040, acc:22, sim:false}},
+        /* the editor stamps their own stage from the newsroom */
+        "Mohammed Khalid":{start:{time:now-86400000*2, lat:26.22851, lng:50.58604, acc:20, sim:false},
+                           end:  {time:now-3600000*6,  lat:26.22849, lng:50.58611, acc:24, sim:false}},
       },
       timeline:[
         tl("requester","Submitted the request.","قدّم الطلب.", now-86400000*4),
@@ -950,18 +953,26 @@ function editorialStaffParts(rq){
   if(rq.assign.heba)       parts.push(t("f_heba")); /* Heba IS the person — no "role: name" pair */
   return parts;
 }
-/* ---------- field tracking (start / finish with date, time & location) ---------- */
-/* only the crew that physically goes on location — the editor works in-house.
-   Tracking belongs to the Shooting stage only; "In progress" is prep/planning. */
-const FIELD_STAGES=["shooting"];
-function fieldMembers(rq){
+/* ---------- work tracking (start / finish with date, time & location) ---------- */
+/* every assigned member stamps their OWN stage: the field crew at Shooting,
+   the video editor at Editing. "In progress" is prep/planning — nothing to stamp. */
+const TRACK_STAGES=["shooting","editing"];
+function stageMembers(rq, status){
   const a=(rq&&rq.assign)||{};
-  return [...(a.shooting||[]), a.reporter, a.journalist, a.heba].filter(Boolean);
+  if(status==="shooting") return [...(a.shooting||[]), a.reporter, a.journalist, a.heba].filter(Boolean);
+  if(status==="editing")  return [...(a.editors||[])];
+  return [];
 }
-function isFieldMember(rq,uid){ return fieldMembers(rq).includes(uid); }
-/* a field member must stamp both بدء and إنهاء before they can end a field stage */
+function trackedMembers(rq){
+  const out=[]; TRACK_STAGES.forEach(s=>stageMembers(rq,s).forEach(n=>{ if(!out.includes(n)) out.push(n); }));
+  return out;
+}
+function trackStageOf(rq,uid){ return TRACK_STAGES.find(s=>stageMembers(rq,s).includes(uid))||null; }
+/* the member may stamp only while their own stage is the current one */
+function canTrackNow(rq,uid){ return trackStageOf(rq,uid)===rq.status; }
+/* …and must stamp both بدء and إنهاء before they can end that stage */
 function fieldGated(rq,uid){
-  if(!FIELD_STAGES.includes(rq.status) || !isFieldMember(rq,uid)) return false;
+  if(!canTrackNow(rq,uid)) return false;
   const rec=(rq.field||{})[uid]||{};
   return !(rec.start && rec.end);
 }
@@ -1832,14 +1843,13 @@ function changeReqPanel(rq, r){
     ${btns}
   </div>`;
 }
-/* field crew start/finish log — visible to every internal role, actionable only by the
-   field member themselves while the request is on a field stage */
+/* start/finish log — visible to every internal role, actionable only by the member
+   themselves and only while their own stage is the current one */
 function fieldPanel(rq, r){
-  const members=fieldMembers(rq);
+  const members=trackedMembers(rq);
   if(!members.length) return "";
   const recs=rq.field||{};
-  const active=FIELD_STAGES.includes(rq.status);
-  if(!active && !Object.keys(recs).length) return "";
+  if(!TRACK_STAGES.includes(rq.status) && !Object.keys(recs).length) return "";
   const stamp=(labelKey,p)=> p ? `<div class="fl-line">
       <span class="fl-k">${esc(t(labelKey))}</span>
       <span class="fl-v" dir="auto">${esc(fmtDate(p.time))}</span>
@@ -1851,21 +1861,23 @@ function fieldPanel(rq, r){
   const rows=members.map(name=>{
     const rec=recs[name]||{};
     const isMe=(name===r);
+    const mine=isMe&&canTrackNow(rq,name);   /* my own stage is the current one */
     let chip="", btn="";
     if(rec.end){
       chip=`<span class="st done" style="padding:1px 8px">✔ ${esc(t("field_done"))}</span>`;
     }else if(rec.start){
       chip=`<span class="st work" style="padding:1px 8px">${esc(t("field_inprog"))}</span>`;
-      if(isMe&&active) btn=`<button class="btn danger" data-field="end">⏹ ${esc(t("field_end"))}</button>`;
+      if(mine) btn=`<button class="btn danger" data-field="end">⏹ ${esc(t("field_end"))}</button>`;
     }else{
       chip=`<span class="small muted">— ${esc(t("field_pending"))}</span>`;
-      if(isMe&&active) btn=`<button class="btn good" data-field="start">▶ ${esc(t("field_start"))}</button>`;
+      if(mine) btn=`<button class="btn good" data-field="start">▶ ${esc(t("field_start"))}</button>`;
     }
+    const onStage=`<span class="small muted" dir="auto">· ${esc(statusLabel(trackStageOf(rq,name)))}</span>`;
     const dur=(rec.start&&rec.end)
       ? `<div class="fl-line"><span class="fl-k">${esc(t("field_dur"))}</span><span class="fl-v">${esc(fmtDur(rec.end.time-rec.start.time))}</span></div>` : "";
     return `<div class="fieldrow">
       <div class="fl-top">
-        <span class="fl-name" dir="auto">${esc(roleName(name))}${isMe?` <span class="internal-tag">${esc(t("field_you"))}</span>`:""}</span>
+        <span class="fl-name" dir="auto">${esc(roleName(name))}${isMe?` <span class="internal-tag">${esc(t("field_you"))}</span>`:""} ${onStage}</span>
         ${chip}
       </div>
       ${stamp("field_started_l",rec.start)}${stamp("field_ended_l",rec.end)}${dur}
@@ -1994,7 +2006,7 @@ function bindDetail(){
   // field tracking — the member themselves stamps start / finish (time + location)
   document.querySelectorAll("[data-field]").forEach(el=>el.onclick=()=>{
     const what=el.dataset.field, me=myRole();
-    if(!isFieldMember(rq,me) || !FIELD_STAGES.includes(rq.status)) return;
+    if(!canTrackNow(rq,me)) return;
     el.disabled=true;
     const msg=document.getElementById("fieldMsg");
     if(msg){ msg.style.display=""; msg.textContent="⏳ "+t("field_locating"); }
