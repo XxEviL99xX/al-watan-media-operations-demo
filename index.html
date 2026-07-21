@@ -412,14 +412,14 @@ const DICT = {
   assign_h:       {en:"Assign team (pick the people, once)", ar:"تعيين الفريق (اختيار الأشخاص مرة واحدة)"},
   producers:      {en:"Producers", ar:"المنتجون"},
   editors:        {en:"Editors", ar:"المونتاج"},
-  need_reporter:  {en:"Editorial roles needed for this request", ar:"الأدوار التحريرية المطلوبة لهذا الطلب"},
-  reporter_rule:  {en:"Per policy, a copy goes to zalmushaigri@alwatannews.net and the reporter/journalist is assigned through the Editorial Manager only.",
-                   ar:"حسب السياسة، تُرسَل نسخة إلى zalmushaigri@alwatannews.net ويُعيَّن المراسل/الصحفي عبر مسؤول المحررين فقط."},
-  request_journal:{en:"Request editorial staff from Editorial Manager", ar:"طلب الطاقم التحريري من مسؤول المحررين"},
+  need_reporter:  {en:"This request needs a reporter / presenter", ar:"يحتاج هذا الطلب إلى مراسل / مقدّم"},
+  reporter_rule:  {en:"Per policy, a copy goes to zalmushaigri@alwatannews.net and the reporter/presenter is assigned through the Editorial Manager only.",
+                   ar:"حسب السياسة، تُرسَل نسخة إلى zalmushaigri@alwatannews.net ويُعيَّن المراسل/المقدّم عبر مسؤول المحررين فقط."},
+  request_journal:{en:"Request reporter from Editorial Manager", ar:"طلب مراسل من مسؤول المحررين"},
   finalize_team:  {en:"Finalize & start production", ar:"اعتماد الفريق وبدء الإنتاج"},
-  reporter_pending:{en:"Waiting for the Editorial Manager to select the editorial staff…",
-                    ar:"بانتظار اختيار مسؤول المحررين للطاقم التحريري…"},
-  reporter_chosen:{en:"Editorial staff selected", ar:"تم اختيار الطاقم التحريري"},
+  reporter_pending:{en:"Waiting for the Editorial Manager to select the reporter/presenter…",
+                    ar:"بانتظار اختيار مسؤول المحررين للمراسل/المقدّم…"},
+  reporter_chosen:{en:"Reporter/presenter selected", ar:"تم اختيار المراسل/المقدّم"},
 
   /* journal panel */
   journal_h:      {en:"Select editorial staff", ar:"اختيار الطاقم التحريري"},
@@ -549,7 +549,7 @@ const STATUS_LABEL = {
   head_approval:{en:"Head approval",ar:"موافقة رئيس القسم"},
   changes_marketing:{en:"Changes requested (Marketing)",ar:"تعديلات مطلوبة (التسويق)"},
   assign_team:{en:"Assign team",ar:"تعيين الفريق"},
-  journal_selection:{en:"Editorial staff selection (Editorial Manager)",ar:"اختيار الطاقم التحريري (مسؤول المحررين)"},
+  journal_selection:{en:"Reporter selection (Head of Journal)",ar:"اختيار المراسل (رئيس التحرير)"},
   in_progress:{en:"In progress",ar:"قيد التنفيذ"},
   shooting:{en:"Shooting",ar:"التصوير"},
   editing:{en:"Editing",ar:"المونتاج"},
@@ -589,11 +589,11 @@ const STAGE_GUIDE = {
   assign_team:{
     d:{en:"The Production Head is assigning the people (once).",ar:"يعيّن رئيس الإنتاج الأشخاص (مرة واحدة)."},
     n:{en:"Once finalized → production starts (In progress).",ar:"بعد الاعتماد ← يبدأ الإنتاج (قيد التنفيذ)."},
-    o:{en:"Pick producers & video editors. If a reporter or journalist is needed, request the Editorial Manager first.",ar:"اختر المنتجين والمونتيرين. إن لزم مراسل أو صحفي، اطلب مسؤول المحررين أولًا."}},
+    o:{en:"Pick producers & video editors. If a reporter is needed, request the Editorial Manager first.",ar:"اختر المنتجين والمونتيرين. إن لزم مراسل، اطلب مسؤول المحررين أولًا."}},
   journal_selection:{
-    d:{en:"The Editorial Manager is selecting the requested editorial staff (reporter / journalist).",ar:"يختار مسؤول المحررين الطاقم التحريري المطلوب (مراسل / صحفي)."},
-    n:{en:"After selection → production starts with the complete team.",ar:"بعد الاختيار ← يبدأ الإنتاج بالفريق المكتمل."},
-    o:{en:"Choose a person for each requested role and confirm.",ar:"اختر شخصًا لكل دور مطلوب ثم أكّد."}},
+    d:{en:"The Editorial Manager is selecting the reporter/presenter.",ar:"يختار مسؤول المحررين المراسل/المقدّم."},
+    n:{en:"After selection → back to the Head to finalize the team.",ar:"بعد الاختيار ← يعود للرئيس لاعتماد الفريق."},
+    o:{en:"Choose the reporter/presenter and confirm.",ar:"اختر المراسل/المقدّم وأكّد."}},
   in_progress:{
     d:{en:"Preparation & planning by the assigned producer.",ar:"التحضير والتخطيط بواسطة المنتج المعيَّن."},
     n:{en:"Next stage → Shooting (التصوير).",ar:"المرحلة التالية ← التصوير."},
@@ -1450,17 +1450,10 @@ function assignPanel(rq){
     <div class="chips">${chipSet("producers",ROSTER.producers)}</div>
     <div class="small muted" style="margin-top:12px">${esc(t("editors"))}</div>
     <div class="chips">${chipSet("editors",ROSTER.editors)}</div>
-    <div class="small muted" style="margin-top:16px;font-weight:600">${esc(t("need_reporter"))}</div>
-    <div class="role-checks" role="group" aria-label="${esc(t("need_reporter"))}">
-      <label class="role-check" for="repNeeded">
-        <input type="checkbox" id="repNeeded" ${rq.assign.reporterNeeded?"checked":""}>
-        <span>🎤 ${esc(t("f_reporter"))}</span>
-      </label>
-      <label class="role-check" for="jourNeeded">
-        <input type="checkbox" id="jourNeeded" ${rq.assign.journalistNeeded?"checked":""}>
-        <span>📰 ${esc(t("f_journalist"))}</span>
-      </label>
-    </div>
+    <label class="f" style="display:flex;align-items:center;gap:8px;margin-top:16px;font-weight:600">
+      <input type="checkbox" id="repNeeded" ${editorialNeeded?"checked":""} style="width:auto">
+      ${esc(t("need_reporter"))}
+    </label>
     <div id="repRuleBox" class="${editorialNeeded?"":"hidden"}">
       <div class="note">${esc(t("reporter_rule"))}</div>
       ${editorialStaffParts(rq).length?`<div class="small" style="color:var(--assign);font-weight:700;margin-top:8px">✔ ${esc(t("reporter_chosen"))}: ${esc(editorialStaffParts(rq).join(" · "))}</div>`:""}
@@ -1557,15 +1550,17 @@ function bindDetail(){
     save(); render();
   });
   const rn=document.getElementById("repNeeded");
-  if(rn) rn.onchange=()=>{ rq.assign.reporterNeeded=rn.checked; if(!rn.checked) rq.assign.reporter=null; rq.assign.reporterChosen=needsEditorial(rq)&&editorialComplete(rq); save(); render(); };
-  const jn=document.getElementById("jourNeeded");
-  if(jn) jn.onchange=()=>{ rq.assign.journalistNeeded=jn.checked; if(!jn.checked) rq.assign.journalist=null; rq.assign.reporterChosen=needsEditorial(rq)&&editorialComplete(rq); save(); render(); };
+  if(rn) rn.onchange=()=>{
+    if(rn.checked){ rq.assign.reporterNeeded=true; }
+    else { rq.assign.reporterNeeded=false; rq.assign.journalistNeeded=false; rq.assign.reporter=null; rq.assign.journalist=null; rq.assign.reporterChosen=false; }
+    save(); render();
+  };
   const rj=document.getElementById("reqJournal");
   if(rj) rj.onclick=()=>{
-    addTl(rq,"Requested the editorial staff (reporter/journalist) from the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
-             "طلب الطاقم التحريري (مراسل/صحفي) من مسؤول المحررين (نسخة إلى zalmushaigri@alwatannews.net).");
+    addTl(rq,"Requested a reporter/presenter from the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
+             "طلب مراسلًا/مقدّمًا من مسؤول المحررين (نسخة إلى zalmushaigri@alwatannews.net).");
     rq.status="journal_selection";
-    pushNoti("journal", rq, "An editorial staff selection is requested.","مطلوب اختيار الطاقم التحريري.");
+    pushNoti("journal", rq, "A reporter/presenter selection is requested.","مطلوب اختيار مراسل/مقدّم.");
     save(); render();
   };
   const ft=document.getElementById("finalizeTeam");
