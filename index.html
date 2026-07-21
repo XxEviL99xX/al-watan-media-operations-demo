@@ -348,6 +348,9 @@ const DICT = {
                       ar:"اختر عميلًا لتعبئة بياناته تلقائيًا، أو اكتب عميلًا جديدًا بالأسفل."},
   f_contact:      {en:"Responsible person", ar:"الشخص المسؤول"},
   f_phone:        {en:"Phone", ar:"الهاتف"},
+  f_phone2:       {en:"Backup phone (optional)", ar:"هاتف إضافي (اختياري)"},
+  add_phone2:     {en:"➕ Add backup number (optional)", ar:"➕ إضافة رقم إضافي (اختياري)"},
+  phone2_hint:    {en:"Called if the primary number doesn't answer.", ar:"يُتصل به إذا لم يرد الرقم الأساسي."},
   f_email:        {en:"Email", ar:"الإيميل"},
   f_event_date:   {en:"Event date", ar:"تاريخ الفعالية"},
   f_coverage:     {en:"Coverage type", ar:"نوع التغطية"},
@@ -692,7 +695,7 @@ let state = load();
 function seed(){
   const now = Date.now();
   const mk = (o)=>Object.assign({
-    contact:"", phone:"", email:"", eventDate:"", eventDateTime:"",
+    contact:"", phone:"", phone2:"", email:"", eventDate:"", eventDateTime:"",
     coverage:"comprehensive", eventType:"editorial",
     locationText:"", locationLat:null, locationLng:null, attachments:[], notes:"",
     assign:{producers:[],shooting:[],editors:[],reporterNeeded:false,journalistNeeded:false,hebaNeeded:false,reporterChosen:false,reporter:null,journalist:null,heba:null},
@@ -1086,7 +1089,11 @@ function viewNew(){
     <div class="form-grid">
       <div>${lbl("f_client",1)}<input type="text" id="n_client" value="${val("client")}"></div>
       <div>${lbl("f_contact",0)}<input type="text" id="n_contact" value="${val("contact")}"></div>
-      <div>${lbl("f_phone",0)}<input type="tel" id="n_phone" value="${val("phone")}"></div>
+      <div>${lbl("f_phone",0)}<input type="tel" id="n_phone" value="${val("phone")}">
+        <button type="button" class="btn" id="addPhone2" style="margin-top:8px;font-size:12.5px;padding:6px 10px${rq&&rq.phone2?";display:none":""}">${esc(t("add_phone2"))}</button>
+        <div id="phone2Wrap" class="${rq&&rq.phone2?"":"hidden"}">${lbl("f_phone2",0)}<input type="tel" id="n_phone2" value="${val("phone2")}" placeholder="${esc(t("f_phone2"))}">
+        <div class="small muted" style="margin-top:4px">${esc(t("phone2_hint"))}</div></div>
+      </div>
       <div>${lbl("f_email",0)}<input type="email" id="n_email" value="${val("email")}"></div>
       <div>${lbl("f_coverage",1)}<select class="f" id="n_coverage">${selOpts(COVERAGE, rq?rq.coverage:"comprehensive")}</select></div>
       <div>${lbl("f_event_type",1)}<select class="f" id="n_eventType">${selOpts(EVTYPE, rq?rq.eventType:"editorial")}</select></div>
@@ -1188,13 +1195,20 @@ function bindNew(){
     set("n_email",c.email); set("n_locationText",c.location);
     if(c.lat!=null) formSetLocation(c.lat,c.lng);
   };
+  const ap2=document.getElementById("addPhone2");
+  if(ap2) ap2.onclick=()=>{
+    ap2.style.display="none";
+    const w=document.getElementById("phone2Wrap");
+    w.classList.remove("hidden");
+    document.getElementById("n_phone2").focus();
+  };
   document.getElementById("n_cancel").onclick=()=>{ state.editReq=null; state.view="list"; save(); render(); };
   document.getElementById("n_submit").onclick=async ()=>{
     const g=id=>{const el=document.getElementById(id); return el?el.value.trim():"";};
     const err=document.getElementById("n_err");
     const title=g("n_title"), client=g("n_client"), due=g("n_due");
     const coverage=document.getElementById("n_coverage").value, eventType=document.getElementById("n_eventType").value;
-    const contact=g("n_contact"), phone=g("n_phone"), email=g("n_email");
+    const contact=g("n_contact"), phone=g("n_phone"), phone2=g("n_phone2"), email=g("n_email");
     const eventDateTime=g("n_eventDateTime");
     const eventDate=eventDateTime ? eventDateTime.slice(0,10) : (rqEdit ? rqEdit.eventDate : "");
     const locationText=g("n_locationText"), notes=g("n_notes");
@@ -1211,7 +1225,7 @@ function bindNew(){
       err.textContent = state.lang==="ar"?"لا يمكن اختيار تاريخ قبل اليوم.":"Dates cannot be earlier than today.";
       return;
     }
-    const fields={ title,client,contact,phone,email,eventDate,eventDateTime,coverage,eventType,
+    const fields={ title,client,contact,phone,phone2,email,eventDate,eventDateTime,coverage,eventType,
       due,locationText,locationLat:_formLoc.lat,locationLng:_formLoc.lng,notes };
 
     if(state.editReq){
@@ -1361,6 +1375,7 @@ function viewDetail(){
   const contactRows = clientView ? "" :
     `${rq.contact?`<div class="k">${esc(t("f_contact"))}</div><div class="v" dir="auto">${esc(rq.contact)}</div>`:""}
      ${rq.phone?`<div class="k">${esc(t("f_phone"))}</div><div class="v">${esc(rq.phone)}</div>`:""}
+     ${rq.phone2?`<div class="k">${esc(t("f_phone2"))}</div><div class="v">${esc(rq.phone2)}</div>`:""}
      ${rq.email?`<div class="k">${esc(t("f_email"))}</div><div class="v">${esc(rq.email)}</div>`:""}`;
 
   const summary=`<div class="summary">
