@@ -364,7 +364,7 @@ const DICT = {
   f_reporter_q:   {en:"Editorial roles needed (optional)", ar:"الأدوار التحريرية المطلوبة (اختياري)"},
   f_reporter:     {en:"Reporter", ar:"مراسل"},
   f_journalist:   {en:"Journalist", ar:"صحفي"},
-  f_heba:         {en:"Heba", ar:"Heba"}, /* placeholder — Ahmed hasn't named this role yet */
+  f_heba:         {en:"Heba", ar:"هبة"}, /* one specific person — her exact role title is still undecided (Ahmed) */
   f_notes:        {en:"Notes", ar:"ملاحظات"},
   f_attach:       {en:"Attachments", ar:"مرفقات"},
   f_attach_hint:  {en:"You can upload files (images, video, references).", ar:"يمكنك رفع ملفات (صور، فيديو، مراجع)."},
@@ -420,8 +420,8 @@ const DICT = {
   editors:        {en:"Editors", ar:"المونتاج"},
   editorial_flagged:{en:"The requester flagged these editorial roles for this request:", ar:"حدّد مقدم الطلب هذه الأدوار التحريرية لهذا الطلب:"},
   no_editorial:   {en:"No editorial role was requested for this request.", ar:"لم يُطلب أي دور تحريري لهذا الطلب."},
-  reporter_rule:  {en:"Per policy, a copy goes to zalmushaigri@alwatannews.net and the reporter/presenter is assigned through the Editorial Manager only. Once you assign the team, the request goes to the Editorial Manager automatically.",
-                   ar:"حسب السياسة، تُرسَل نسخة إلى zalmushaigri@alwatannews.net ويُعيَّن المراسل/المقدّم عبر مسؤول المحررين فقط. بعد تعيين الفريق يُحال الطلب إلى مسؤول المحررين تلقائيًا."},
+  reporter_rule:  {en:"Per policy, a copy goes to zalmushaigri@alwatannews.net and the requested editorial staff (reporter / journalist / Heba) are assigned through the Editorial Manager only. Once you assign the team, the request goes to the Editorial Manager automatically.",
+                   ar:"حسب السياسة، تُرسَل نسخة إلى zalmushaigri@alwatannews.net ويُعيَّن الطاقم التحريري المطلوب (مراسل / صحفي / هبة) عبر مسؤول المحررين فقط. بعد تعيين الفريق يُحال الطلب إلى مسؤول المحررين تلقائيًا."},
   finalize_team:  {en:"Assign team", ar:"تعيين الفريق"},
   assign_pick_all:{en:"Select at least one person from each team (shooting, editor) to enable Assign.",
                    ar:"اختر شخصًا واحدًا على الأقل من كل فريق (تصوير، مونتاج) لتفعيل التعيين."},
@@ -518,7 +518,7 @@ const KIND_LABEL = {
   editor:{en:"Video editor",ar:"فني مونتاج",ic:"✂️"},
   reporter:{en:"Reporter / presenter",ar:"مراسل / مقدّم",ic:"🎤"},
   journalist:{en:"Journalist",ar:"صحفي",ic:"📰"},
-  heba:{en:"Heba",ar:"Heba",ic:"🎙️"},
+  heba:{en:"Heba",ar:"هبة",ic:"🎙️"},
 };
 function kindOf(id){ if(ROLES.includes(id)) return id; return (typeof STAFF!=="undefined" && STAFF[id]) ? STAFF[id] : "staff"; }
 function isStaff(id){ return !ROLES.includes(id); }
@@ -666,7 +666,7 @@ const ROSTER = {
   editors:["Mohammed Khalid","Layla Omar"],
   reporters:["Fatima Noor","Yousef Salem","Huda Kamal"],
   journalists:["Noor Abdulla","Salman Isa"],
-  hebas:["Amal Nasser","Dana Salem"],
+  hebas:["Heba"], /* Heba is one real person — role title TBD by Ahmed */
 };
 const GROUPS = {
   g1:["nnasser@alwatannews.net","m.nazeeh@alwatannews.net"],
@@ -757,6 +757,8 @@ function migrateSavedWorkflow(saved){
     if(assign && assign.journalist===undefined){ assign.journalist=null; changed=true; }
     if(assign && assign.journalistNeeded===undefined){ assign.journalistNeeded=false; changed=true; }
     if(assign && assign.heba===undefined){ assign.heba=null; changed=true; }
+    /* Heba is now one specific person — remap any earlier placeholder names */
+    if(assign && assign.heba && assign.heba!=="Heba"){ assign.heba="Heba"; changed=true; }
     if(assign && assign.hebaNeeded===undefined){ assign.hebaNeeded=false; changed=true; }
     if(assign && !Array.isArray(assign.shooting)){ assign.shooting=[]; changed=true; }
     /* v6: producers removed from the workflow — clear them from old saves */
@@ -811,7 +813,7 @@ function editorialStaffParts(rq){
   const parts=[];
   if(rq.assign.reporter)   parts.push(`${t("kind_reporter")}: ${rq.assign.reporter}`);
   if(rq.assign.journalist) parts.push(`${t("f_journalist")}: ${rq.assign.journalist}`);
-  if(rq.assign.heba)       parts.push(`${t("f_heba")}: ${rq.assign.heba}`);
+  if(rq.assign.heba)       parts.push(t("f_heba")); /* Heba IS the person — no "role: name" pair */
   return parts;
 }
 function myRole(){ return state.currentUser; }
@@ -1520,7 +1522,7 @@ function journalPanel(rq){
   const hebaSection = rq.assign.hebaNeeded ? `
     <div class="small muted" style="margin-top:10px">🎙️ ${esc(t("f_heba"))}</div>
     <div class="chips" id="hebaChips">
-      ${ROSTER.hebas.map(n=>`<span class="chip ${rq.assign.heba===n?"sel":""}" data-heba="${esc(n)}">${esc(n)}</span>`).join("")}
+      ${ROSTER.hebas.map(n=>`<span class="chip ${rq.assign.heba===n?"sel":""}" data-heba="${esc(n)}">${esc(n==="Heba"?t("f_heba"):n)}</span>`).join("")}
     </div>` : "";
   return `<h2>${esc(t("journal_h"))}</h2>
     <div class="small muted">${esc(t("journal_pick"))}</div>
@@ -1600,8 +1602,8 @@ function bindDetail(){
   if(ft) ft.onclick=()=>{
     if(!rq.assign.shooting.length || !rq.assign.editors.length) return;
     if(needsEditorial(rq) && !editorialComplete(rq)){
-      addTl(rq,"Assigned the production team — reporter/journalist selection sent to the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
-               "تم تعيين فريق الإنتاج — أُحيل اختيار المراسل/الصحفي إلى مسؤول المحررين (نسخة إلى zalmushaigri@alwatannews.net).");
+      addTl(rq,"Assigned the production team — editorial staff selection sent to the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
+               "تم تعيين فريق الإنتاج — أُحيل اختيار الطاقم التحريري إلى مسؤول المحررين (نسخة إلى zalmushaigri@alwatannews.net).");
       rq.status="journal_selection";
       pushNoti("journal", rq, "A team was assigned — reporter/presenter selection is requested.","تم تعيين الفريق — مطلوب اختيار مراسل/مقدّم.");
     }else{
@@ -1626,8 +1628,8 @@ function bindDetail(){
   if(cr) cr.onclick=()=>{
     if(!editorialComplete(rq)) return;
     rq.assign.reporterChosen=true;
-    const staffEn=[rq.assign.reporter&&("Reporter/presenter: "+rq.assign.reporter),rq.assign.journalist&&("Journalist: "+rq.assign.journalist),rq.assign.heba&&("Heba: "+rq.assign.heba)].filter(Boolean).join(", ");
-    const staffAr=[rq.assign.reporter&&("المراسل/المقدّم: "+rq.assign.reporter),rq.assign.journalist&&("الصحفي: "+rq.assign.journalist),rq.assign.heba&&("Heba: "+rq.assign.heba)].filter(Boolean).join("، ");
+    const staffEn=[rq.assign.reporter&&("Reporter/presenter: "+rq.assign.reporter),rq.assign.journalist&&("Journalist: "+rq.assign.journalist),rq.assign.heba&&"Heba"].filter(Boolean).join(", ");
+    const staffAr=[rq.assign.reporter&&("المراسل/المقدّم: "+rq.assign.reporter),rq.assign.journalist&&("الصحفي: "+rq.assign.journalist),rq.assign.heba&&"هبة"].filter(Boolean).join("، ");
     addTl(rq,"Selected "+staffEn+". The complete team is active and production started.","تم اختيار "+staffAr+". الفريق مكتمل وبدأ الإنتاج.");
     rq.status="in_progress";
     notifyOwners(rq,"The complete team is assigned — production has started.","تم تعيين الفريق بالكامل — بدأ الإنتاج.");
