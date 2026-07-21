@@ -242,6 +242,19 @@
   /* timeline note */
   .tl-note{background:#fff7ed;border:1px solid #f3d3ab;border-radius:8px;padding:7px 10px;margin-top:5px;font-size:12.5px;color:#8a4b0a}
 
+  /* before/after diff (change requests + audit trail) */
+  .diffbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;background:var(--bg)}
+  .diff-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .diff-row:last-child{border-bottom:none}
+  .diff-k{font-weight:700;font-size:12px;color:var(--muted);min-width:118px}
+  .diff-old{background:#fde8e8;color:#9b1c1c;text-decoration:line-through;padding:2px 9px;border-radius:7px;font-size:12.5px}
+  .diff-new{background:#def7e4;color:#166f31;padding:2px 9px;border-radius:7px;font-size:12.5px;font-weight:600}
+  .diff-arrow{color:var(--muted);font-size:12px}
+  .cr-banner{border:1px solid #f3d3ab;border-inline-start:4px solid var(--changes);border-radius:10px;background:#fff7ed;padding:10px 12px;font-size:12.5px;color:#8a4b0a;margin-bottom:10px}
+  :root[data-theme="dark"] .diff-old{background:#3a1b1b;color:#f0a4a4}
+  :root[data-theme="dark"] .diff-new{background:#16311e;color:#8fdca6}
+  :root[data-theme="dark"] .cr-banner{background:#2a2013;border-color:#5a4020;color:#e8c48a}
+
   /* modal */
   .modal-ov{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:80;padding:18px}
   .modal{background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(16,24,40,.28);padding:20px 22px;width:100%;max-width:440px}
@@ -477,6 +490,28 @@ const DICT = {
   note_t_cancel:  {en:"Reason for cancellation", ar:"سبب الإلغاء"},
   note_t_final:   {en:"Describe the final change requested", ar:"صف التعديل الأخير المطلوب"},
   note_t_route:   {en:"Note for the team (optional)", ar:"ملاحظة للفريق (اختياري)"},
+
+  /* change request (requester → marketing approval) */
+  req_change:     {en:"Request a change", ar:"طلب تعديل"},
+  change_req_h:   {en:"Change request on an active request", ar:"طلب تعديل على طلب قائم"},
+  change_req_note:{en:"Nothing changes yet — your edits are sent as a change request and apply only after the Marketing Manager approves them.",
+                   ar:"لن يتغيّر شيء الآن — تُرسَل تعديلاتك كطلب تعديل ولا تُطبَّق إلا بعد موافقة مدير التسويق."},
+  change_note_l:  {en:"Why is this change needed?", ar:"سبب طلب التعديل"},
+  submit_change:  {en:"Send change request", ar:"إرسال طلب التعديل"},
+  change_note_req:{en:"Please write the reason for the change.", ar:"الرجاء كتابة سبب التعديل."},
+  no_diff_err:    {en:"You haven't changed anything yet.", ar:"لم تُجرِ أي تغيير بعد."},
+  change_pending_h:{en:"Pending change request", ar:"طلب تعديل قيد الموافقة"},
+  change_pending_sub:{en:"The Requester asked to modify this request. The changes below apply only if Marketing approves.",
+                      ar:"طلب مقدم الطلب تعديل هذا الطلب. التعديلات أدناه لا تُطبَّق إلا بموافقة التسويق."},
+  change_wait_mk: {en:"Waiting for the Marketing Manager to approve or decline this change request.",
+                   ar:"بانتظار موافقة مدير التسويق على طلب التعديل أو رفضه."},
+  approve_change: {en:"Approve & apply changes", ar:"اعتماد التعديلات وتطبيقها"},
+  reject_change:  {en:"Decline & cancel the request", ar:"رفض التعديل وإلغاء الطلب"},
+  withdraw_change:{en:"Withdraw change request", ar:"سحب طلب التعديل"},
+  note_t_reject_change:{en:"Reason for cancelling the request", ar:"سبب إلغاء الطلب"},
+  before_after_l: {en:"Requested changes (before → after)", ar:"التعديلات المطلوبة (قبل ← بعد)"},
+  diff_attach_new:{en:"New attachments", ar:"مرفقات جديدة"},
+  cr_flag:        {en:"Change request pending", ar:"طلب تعديل معلّق"},
 
   /* edit & resubmit */
   edit_h:         {en:"Edit & resubmit request", ar:"تعديل الطلب وإعادة إرساله"},
@@ -785,7 +820,21 @@ function load(){
   }catch(e){}
   const s = seed(); try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} return s;
 }
-function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch(e){
+    /* storage full (embedded attachment previews) — retry without the file bytes
+       so workflow data (statuses, audit trail, change requests) is never lost */
+    try{
+      const slim=JSON.parse(JSON.stringify(state));
+      (slim.requests||[]).forEach(r=>{
+        (r.attachments||[]).forEach(a=>{ delete a.url; });
+        if(r.changeReq) (r.changeReq.attachments||[]).forEach(a=>{ delete a.url; });
+      });
+      localStorage.setItem(LS_KEY, JSON.stringify(slim));
+    }catch(e2){}
+  }
+}
 function resetDemo(){ localStorage.removeItem(LS_KEY); state=seed(); save(); render(); }
 
 /* ---------- helpers ---------- */
@@ -815,6 +864,45 @@ function editorialStaffParts(rq){
   if(rq.assign.journalist) parts.push(`${t("f_journalist")}: ${rq.assign.journalist}`);
   if(rq.assign.heba)       parts.push(t("f_heba")); /* Heba IS the person — no "role: name" pair */
   return parts;
+}
+/* ---------- change-request diff (before/after audit) ---------- */
+const DIFF_LABEL={title:"f_title",client:"f_client",contact:"f_contact",phone:"f_phone",phone2:"f_phone2",
+  email:"f_email",eventDateTime:"f_event_dt",due:"f_delivery",coverage:"f_coverage",eventType:"f_event_type",
+  locationText:"f_location",notes:"f_notes",editorial:"f_reporter_q",attachments:"diff_attach_new"};
+function diffFmt(k,v){
+  if(k==="coverage") return covLabel(v);
+  if(k==="eventType") return evtypeLabel(v);
+  if(k==="eventDateTime") return v?fmtDate(v):"—";
+  if(k==="due") return v?fmtDay(v):"—";
+  if(k==="editorial") return (v&&v.length)?v.map(x=>t(x)).join(state.lang==="ar"?"، ":", "):"—";
+  if(k==="attachments") return (v||[]).join(state.lang==="ar"?"، ":", ");
+  return (v==null||v==="")?"—":v;
+}
+/* compare current request vs a proposed edit → [{k,before,after}] */
+function computeDiff(rq, fields, flags, files){
+  const out=[];
+  const eq=(a,b)=>String(a==null?"":a)===String(b==null?"":b);
+  ["title","client","contact","phone","phone2","email","eventDateTime","due","coverage","eventType","locationText","notes"]
+    .forEach(f=>{ if(!eq(rq[f],fields[f])) out.push({k:f,before:rq[f]||"",after:fields[f]||""}); });
+  const rolesOf=(rep,jour,heba)=>[rep&&"f_reporter",jour&&"f_journalist",heba&&"f_heba"].filter(Boolean);
+  const beforeR=rolesOf(rq.assign.reporterNeeded,rq.assign.journalistNeeded,rq.assign.hebaNeeded);
+  const afterR =rolesOf(flags.reporterNeeded,flags.journalistNeeded,flags.hebaNeeded);
+  if(beforeR.join("|")!==afterR.join("|")) out.push({k:"editorial",before:beforeR,after:afterR});
+  if(files&&files.length) out.push({k:"attachments",before:null,after:files.map(f=>f.name)});
+  return out;
+}
+function diffTable(diff){
+  const arrow = state.lang==="ar"?"←":"→";
+  const rows=diff.map(d=>{
+    const label=esc(t(DIFF_LABEL[d.k]||d.k));
+    if(d.before==null) /* additions only (attachments) */
+      return `<div class="diff-row"><span class="diff-k">${label}</span><span class="diff-new" dir="auto">＋ ${esc(diffFmt(d.k,d.after))}</span></div>`;
+    return `<div class="diff-row"><span class="diff-k">${label}</span>
+      <span class="diff-old" dir="auto">${esc(diffFmt(d.k,d.before))}</span>
+      <span class="diff-arrow">${arrow}</span>
+      <span class="diff-new" dir="auto">${esc(diffFmt(d.k,d.after))}</span></div>`;
+  }).join("");
+  return `<div class="diffbox">${rows}</div>`;
 }
 function myRole(){ return state.currentUser; }
 function isOwner(req, uid){
@@ -938,7 +1026,7 @@ function renderTopbar(){
        ${themeBtn()}
        <button id="logoutBtn">${esc(t("logout"))}</button>
      </div>`;
-  tb.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{ state.view=b.dataset.nav; state.notiOpen=false; save(); render(); });
+  tb.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{ state.view=b.dataset.nav; state.notiOpen=false; state.editReq=null; state.crEdit=null; save(); render(); });
   document.getElementById("bellBtn").onclick=()=>{ state.notiOpen=!state.notiOpen; render(); };
   document.getElementById("roleSel").onchange=e=>{ state.currentUser=e.target.value; state.view="list"; state.notiOpen=false; save(); render(); };
   document.getElementById("logoutBtn").onclick=()=>{ state.currentUser=null; state.view="login"; state.notiOpen=false; save(); render(); };
@@ -1068,16 +1156,17 @@ function bindLogin(){
 
 /* ---------- New request ---------- */
 function viewNew(){
-  const editing = !!state.editReq;
-  const rq = editing ? reqById(state.editReq) : null;
+  const changing = !!state.crEdit;               /* change request on an active request */
+  const editing = !!state.editReq || changing;   /* prefill form from the request */
+  const rq = state.editReq ? reqById(state.editReq) : (changing ? reqById(state.crEdit) : null);
   const val = f => (rq && rq[f]!=null) ? esc(rq[f]) : "";
   const selOpts = (list,cur)=> list.map(([v,lbl])=>`<option value="${v}" ${cur===v?"selected":""}>${esc(t(lbl))}</option>`).join("");
   const lbl = (k,req)=>`<label class="f">${esc(t(k))}${req?` <span class="req-star">*</span>`:""}</label>`;
   const attachList = (rq&&rq.attachments&&rq.attachments.length)
      ? `<div class="attach-list">${rq.attachments.map(a=>`<span class="attach-chip">📎 ${esc(a.name)} <span class="muted">${esc(fmtBytes(a.size))}</span></span>`).join("")}</div>` : "";
   return `<div class="wrap"><div class="card" style="padding:22px 24px">
-    <h1>${esc(editing?t("edit_h"):t("new_h"))}</h1>
-    <div class="note" style="margin-top:8px">${esc(t("smartform_note"))}</div>
+    <h1>${esc(changing?t("change_req_h"):(editing?t("edit_h"):t("new_h")))}</h1>
+    <div class="note" style="margin-top:8px">${esc(changing?t("change_req_note"):t("smartform_note"))}</div>
 
     ${lbl("f_select_client",0)}
     <select class="f" id="n_clientPick">
@@ -1133,10 +1222,11 @@ function viewNew(){
     <input type="file" id="n_attach" multiple>
     ${attachList}
 
-    ${editing?`${lbl("edit_note_l",0)}<textarea id="n_note" placeholder="${esc(t("edit_note_l"))}"></textarea>`:""}
+    ${changing?`${lbl("change_note_l",1)}<textarea id="n_note" placeholder="${esc(t("change_note_l"))}"></textarea>`
+      : (editing?`${lbl("edit_note_l",0)}<textarea id="n_note" placeholder="${esc(t("edit_note_l"))}"></textarea>`:"")}
 
     <div class="btnrow" style="margin-top:16px">
-      <button class="btn primary" id="n_submit">${esc(editing?t("save_resubmit"):t("submit_req"))}</button>
+      <button class="btn primary" id="n_submit">${esc(changing?t("submit_change"):(editing?t("save_resubmit"):t("submit_req")))}</button>
       <button class="btn" id="n_cancel">${esc(t("cancel"))}</button>
     </div>
     <div id="n_err" class="small" style="color:var(--cancelled);margin-top:8px"></div>
@@ -1188,7 +1278,7 @@ function readFiles(fileList){
   })));
 }
 function bindNew(){
-  const rqEdit = state.editReq ? reqById(state.editReq) : null;
+  const rqEdit = (state.editReq||state.crEdit) ? reqById(state.editReq||state.crEdit) : null;
   initFormMap(rqEdit);
   const cp=document.getElementById("n_clientPick");
   if(cp) cp.onchange=()=>{
@@ -1205,7 +1295,12 @@ function bindNew(){
     w.classList.remove("hidden");
     document.getElementById("n_phone2").focus();
   };
-  document.getElementById("n_cancel").onclick=()=>{ state.editReq=null; state.view="list"; save(); render(); };
+  document.getElementById("n_cancel").onclick=()=>{
+    const backTo=state.crEdit;
+    state.editReq=null; state.crEdit=null;
+    if(backTo){ state.activeReq=backTo; state.view="detail"; } else state.view="list";
+    save(); render();
+  };
   document.getElementById("n_submit").onclick=async ()=>{
     const g=id=>{const el=document.getElementById(id); return el?el.value.trim():"";};
     const err=document.getElementById("n_err");
@@ -1231,8 +1326,25 @@ function bindNew(){
     const fields={ title,client,contact,phone,phone2,email,eventDate,eventDateTime,coverage,eventType,
       due,locationText,locationLat:_formLoc.lat,locationLng:_formLoc.lng,notes };
 
+    /* change request on an active request — nothing applies until Marketing approves */
+    if(state.crEdit){
+      const rq=reqById(state.crEdit); const note=g("n_note");
+      if(!note){ err.textContent=t("change_note_req"); return; }
+      const flags={reporterNeeded,journalistNeeded,hebaNeeded};
+      const diff=computeDiff(rq,fields,flags,files);
+      if(!diff.length){ err.textContent=t("no_diff_err"); return; }
+      rq.changeReq={fields,flags,attachments:files,note,time:Date.now(),diff};
+      rq.timeline.push(Object.assign(
+        tlNote("requester","Submitted a change request — awaiting Marketing approval.","قدّم طلب تعديل — بانتظار موافقة التسويق.",note),
+        {diff}));
+      pushNoti("marketing",rq,"A change request awaits your approval.","طلب تعديل بانتظار موافقتك.");
+      state.crEdit=null; state.activeReq=rq.id; state.view="detail"; save(); render(); return;
+    }
+
     if(state.editReq){
       const rq=reqById(state.editReq); const note=g("n_note");
+      /* capture the before/after diff BEFORE applying, so the audit shows old vs new */
+      const diff=computeDiff(rq,fields,{reporterNeeded,journalistNeeded,hebaNeeded},files);
       Object.assign(rq, fields);
       rq.attachments=(rq.attachments||[]).concat(files);
       rq.assign.reporterNeeded=reporterNeeded;
@@ -1243,9 +1355,9 @@ function bindNew(){
       if(!hebaNeeded) rq.assign.heba=null;
       rq.assign.reporterChosen = needsEditorial(rq) && editorialComplete(rq);
       state.activeReq=rq.id; state.editReq=null;
-      const cu=state.currentUser; state.currentUser="requester";
-      addTl(rq,"Edited & resubmitted the request.","تم تعديل الطلب وإعادة إرساله.",note);
-      state.currentUser=cu;
+      rq.timeline.push(Object.assign(
+        tlNote("requester","Edited & resubmitted the request.","تم تعديل الطلب وإعادة إرساله.",note),
+        diff.length?{diff}:{}));
       rq.status="marketing_approval";
       pushNoti("marketing", rq, "A revised request awaits your approval.","طلب مُعدّل بانتظار موافقتك.");
       state.view="detail"; save(); render(); return;
@@ -1282,14 +1394,14 @@ function viewList(archive){
   let tabsHtml="";
   if(!archive){
     const defs=[["all","tab_all"],["mine","tab_mine"],["approvals","tab_approvals"],["production","tab_production"],["client","tab_client"]];
-    const test=k=> k==="mine" ? (rq=>isOwner(rq,r)) : FILTERS[k];
+    const test=k=> k==="mine" ? (rq=>isOwner(rq,r)||(r==="marketing"&&rq.changeReq)) : FILTERS[k];
     if(!["all","mine","approvals","production","client"].includes(state.filter)) state.filter="all";
     tabsHtml=`<div class="tabs">`+defs.map(([k,lbl])=>{
       const c=base.filter(test(k)).length;
       return `<button class="tab ${state.filter===k?"on":""}" data-filter="${k}">${esc(t(lbl))}<span class="cnt">${c}</span></button>`;
     }).join("")+`</div>`;
   }
-  const test=k=> k==="mine" ? (rq=>isOwner(rq,r)) : (FILTERS[k]||FILTERS.all);
+  const test=k=> k==="mine" ? (rq=>isOwner(rq,r)||(r==="marketing"&&rq.changeReq)) : (FILTERS[k]||FILTERS.all);
   let rows = archive ? base : base.filter(test(state.filter));
 
   const title = archive? t("nav_archive"): t("nav_requests");
@@ -1298,7 +1410,8 @@ function viewList(archive){
     body=`<div class="empty">${esc(archive?t("archived_empty"):t("no_requests"))}</div>`;
   }else{
     body = rows.map(rq=>{
-      const flag = isOwner(rq,r) ? `<span class="actionflag">⚡ ${esc(t("action_needed"))}</span>` : "";
+      const crFlag = (!archive&&rq.changeReq&&r!=="client") ? `<span class="actionflag">🔁 ${esc(t("cr_flag"))}</span>` : "";
+      const flag = (isOwner(rq,r)||(r==="marketing"&&rq.changeReq&&!archive)) ? `<span class="actionflag">⚡ ${esc(t("action_needed"))}</span>` : "";
       const quickButtons = !archive&&isOwner(rq,r) ? actionButtons(rq,r).replaceAll("data-act=","data-quick-act=") : "";
       const quickActions = quickButtons ? `<div class="quick-actions" data-quick-wrap>${quickButtons}</div>` : "";
       return `<div class="reqrow" data-open="${rq.id}">
@@ -1310,6 +1423,7 @@ function viewList(archive){
         <div style="text-align:end;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
           <span class="st ${STATUS[rq.status].cls}">${esc(statusLabel(rq.status))}</span>
           ${flag}
+          ${crFlag}
           ${quickActions}
         </div>
       </div>`;
@@ -1407,6 +1521,7 @@ function viewDetail(){
   </div>`;
 
   const media = attachmentsSection(rq);
+  const crPanel = (!clientView && rq.changeReq) ? changeReqPanel(rq, r) : "";
   const actions = renderActionPanel(rq, r);
   const reviewInfo = (rq.status==="internal_review" && !clientView) ? reviewPanel(rq) : "";
   const comments = clientView ? clientComments(rq) : commentPanel(rq);
@@ -1415,7 +1530,7 @@ function viewDetail(){
   return `<div class="wrap">
     <button class="btn" id="backBtn" style="margin-bottom:14px">${esc(t("back"))}</button>
     ${guidanceCard(rq, r)}
-    <div class="card">${summary}${media}${actions}${reviewInfo}${comments}${timeline}</div>
+    <div class="card">${summary}${media}${crPanel}${actions}${reviewInfo}${comments}${timeline}</div>
     ${clientView?`<div class="note" style="margin-top:12px">${esc(t("client_only_note"))}</div>`:""}
   </div>`;
 }
@@ -1472,6 +1587,10 @@ function actionButtons(rq, r){
 
   if(r==="marketing" && s==="marketing_approval"){ B.push(b("mk_approve","approve","good")); B.push(b("mk_changes","request_changes","warn")); }
   if(r==="requester" && s==="changes_requester"){ B.push(b("re_resubmit","resubmit","primary")); }
+  /* requester may ask to modify a request AFTER Marketing approved it — applies only if Marketing approves the change */
+  if(r==="requester" && !rq.changeReq && !["marketing_approval","changes_requester","changes_marketing","cancellation_request","published","cancelled"].includes(s)){
+    B.push(b("re_change","req_change","warn"));
+  }
   if(r==="head" && s==="head_approval"){ B.push(b("hd_approve","approve","good")); B.push(b("hd_changes","request_changes","warn")); }
   if(r==="marketing" && s==="changes_marketing"){ B.push(b("mk_forward","forward_head","good")); B.push(b("mk_toreq","send_requester","warn")); }
   if(isStaff(r) && isOwner(rq,r) && ["in_progress","shooting","editing"].includes(s)){ B.push(b("tm_done","mark_done","primary")); }
@@ -1531,6 +1650,31 @@ function journalPanel(rq){
       <button class="btn good" id="confirmRep" ${editorialComplete(rq)?"":"disabled"}>${esc(t("confirm_reporter"))}</button>
     </div>`;
 }
+/* pending change request — visible to internal roles; marketing decides, requester can withdraw */
+function changeReqPanel(rq, r){
+  const cr=rq.changeReq;
+  let btns="";
+  if(r==="marketing")
+    btns=`<div class="btnrow" style="margin-top:12px">
+      <button class="btn good" data-cr="approve">${esc(t("approve_change"))}</button>
+      <button class="btn danger" data-cr="reject">${esc(t("reject_change"))}</button>
+    </div>`;
+  else if(r==="requester")
+    btns=`<div class="cr-banner" style="margin:12px 0 0">⏳ ${esc(t("change_wait_mk"))}</div>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="btn warn" data-cr="withdraw">${esc(t("withdraw_change"))}</button>
+    </div>`;
+  else
+    btns=`<div class="cr-banner" style="margin:12px 0 0">⏳ ${esc(t("change_wait_mk"))}</div>`;
+  return `<div class="section">
+    <h2>🔁 ${esc(t("change_pending_h"))}</h2>
+    <div class="small muted" dir="auto">${esc(t("change_pending_sub"))}</div>
+    <div class="tl-note" dir="auto" style="margin-top:10px"><b>${esc(t("change_note_l"))}:</b> ${esc(cr.note)}</div>
+    <div class="small" style="font-weight:700;margin-top:12px">${esc(t("before_after_l"))}</div>
+    ${diffTable(cr.diff)}
+    ${btns}
+  </div>`;
+}
 function reviewPanel(rq){
   const line=(ok,label,members,gl)=>`
     <div style="margin-bottom:10px">
@@ -1549,6 +1693,7 @@ function timelinePanel(rq){
     <li><div class="who">${esc(roleName(e.actor))}</div>
         <div dir="auto">${esc(e[state.lang])}</div>
         ${e.note?`<div class="tl-note" dir="auto"><b>${esc(t("note_label"))}:</b> ${esc(e.note)}</div>`:""}
+        ${e.diff&&e.diff.length?diffTable(e.diff):""}
         <div class="tm">${esc(fmtDate(e.time))}</div></li>`).join("");
   return `<div class="section"><h2>${esc(t("timeline_l"))}</h2><ul class="tl">${items}</ul></div>`;
 }
@@ -1587,8 +1732,46 @@ function bindDetail(){
   document.querySelectorAll("[data-act]").forEach(el=>el.onclick=()=>{
     const act=el.dataset.act;
     if(act==="re_resubmit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
+    if(act==="re_change"){ state.crEdit=rq.id; state.view="new"; save(); render(); return; }
     if(NOTE_ACTIONS[act]){ askNote(t(NOTE_ACTIONS[act]), n=>doAction(act,rq,n), REQUIRED.includes(act)); return; }
     doAction(act, rq);
+  });
+
+  // pending change request — marketing approves/declines, requester withdraws
+  document.querySelectorAll("[data-cr]").forEach(el=>el.onclick=()=>{
+    const what=el.dataset.cr; const cr=rq.changeReq; if(!cr) return;
+    if(what==="approve"){
+      Object.assign(rq, cr.fields);
+      rq.attachments=(rq.attachments||[]).concat(cr.attachments||[]);
+      rq.assign.reporterNeeded=cr.flags.reporterNeeded;
+      rq.assign.journalistNeeded=cr.flags.journalistNeeded;
+      rq.assign.hebaNeeded=cr.flags.hebaNeeded;
+      if(!cr.flags.reporterNeeded) rq.assign.reporter=null;
+      if(!cr.flags.journalistNeeded) rq.assign.journalist=null;
+      if(!cr.flags.hebaNeeded) rq.assign.heba=null;
+      rq.assign.reporterChosen = needsEditorial(rq) && editorialComplete(rq);
+      rq.timeline.push(Object.assign(
+        tlNote("marketing","Approved the change request — changes applied to the request.","اعتمد طلب التعديل — طُبِّقت التعديلات على الطلب.",""),
+        {diff:cr.diff}));
+      rq.changeReq=null;
+      pushNoti("requester",rq,"Your change request was approved and applied.","تمت الموافقة على طلب تعديلك وتطبيقه.");
+      save(); render(); return;
+    }
+    if(what==="reject"){
+      /* per Ahmed: Marketing's second option is CANCEL — terminal, same as the existing cancel */
+      askNote(t("note_t_reject_change"), n=>{
+        addTl(rq,"Declined the change request — the request was cancelled (reason recorded).","رفض طلب التعديل — أُلغي الطلب (السبب مسجّل).",n);
+        rq.changeReq=null;
+        rq.status="cancelled";
+        pushNoti("requester",rq,"Your change request was declined and the request was cancelled.","تم رفض طلب تعديلك وإلغاء الطلب.");
+        save(); render();
+      }, true); return;
+    }
+    if(what==="withdraw"){
+      addTl(rq,"Withdrew the change request.","سحب طلب التعديل.");
+      rq.changeReq=null;
+      save(); render();
+    }
   });
 
   // assign chips
