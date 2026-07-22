@@ -794,8 +794,9 @@ const DICT = {
   resubmit:       {en:"Edit & resubmit", ar:"تعديل وإعادة إرسال"},
   forward_head:   {en:"Fix & forward to Head", ar:"تعديل وإرسال للرئيس"},
   send_requester: {en:"Send back to Requester", ar:"إرجاع لمقدم الطلب"},
-  /* v7/T4: "mark_done" now only closes Preparation. The generic إنهاء المرحلة is gone. */
-  prep_done:      {en:"Preparation complete → Shooting", ar:"اكتمل التحضير ← التصوير"},
+  /* v7/T4: Preparation has no إنهاء المرحلة. The assigned member presses ▶ بدء العمل
+     to begin — that single action moves the request Preparation → Shooting. */
+  prep_done:      {en:"▶ Start work", ar:"▶ بدء العمل"},
   approve_g1:     {en:"Approve — Direction & Production", ar:"اعتماد — الإخراج والإنتاج"},
   approve_g2:     {en:"Approve — Editorial & Publishing", ar:"اعتماد — التحرير والنشر"},
   publish:        {en:"Publish", ar:"نشر"},
@@ -1129,7 +1130,7 @@ const STAGE_GUIDE = {
   in_progress:{
     d:{en:"Preparation & planning by the assigned shooting team.",ar:"التحضير والتخطيط بواسطة فريق التصوير المعيَّن."},
     n:{en:"Next stage → Shooting (التصوير).",ar:"المرحلة التالية ← التصوير."},
-    o:{en:"When preparation is complete, confirm to move to Shooting.",ar:"عند اكتمال التحضير، أكّد للانتقال إلى التصوير."}},
+    o:{en:"Press ▶ Start work to begin — it moves the request to Shooting.",ar:"اضغط ▶ بدء العمل للانطلاق — يَنقل الطلب إلى التصوير."}},
   shooting:{
     d:{en:"Filming on location — Shooting (التصوير).",ar:"التصوير في الموقع."},
     n:{en:"Next stage → Editing (المونتاج).",ar:"المرحلة التالية ← المونتاج."},
@@ -2903,7 +2904,7 @@ function doAction(act, rq, note, files){
        it has no per-person tracking. Shooting/Editing advance from إنهاء العمل. */
     case "tm_done": {
       if(rq.status!=="in_progress") return;
-      addTl(rq,"Preparation complete — moved to Shooting.","اكتمل التحضير — الانتقال إلى التصوير.");
+      addTl(rq,"Work started — moved to Shooting.","بدأ العمل — الانتقال إلى التصوير.");
       rq.status="shooting";
       notifyOwners(rq,"Shooting is assigned to you.","التصوير مُسنَد إليك.");
       break; }
