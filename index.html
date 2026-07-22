@@ -3,40 +3,99 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Al Watan — Video Production Request Workflow (Demo)</title>
+<title>عمليات الإعلام — نظام الوطن | Media Operations — Al Watan ERP</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* Al Watan ERP design tokens (@alwatan/ui direction):
+     official red #B32025, light neutral surfaces, IBM Plex Sans Arabic,
+     semantic status colours — brand red is NOT used for every state. */
   :root{
-    --bg:#f4f5f7; --panel:#ffffff; --ink:#1f2430; --muted:#6b7280; --line:#e3e6ec;
-    --brand:#1f3a5f; --brand2:#2f5d8a;
-    --approval:#6d5ac4; --changes:#d9822b; --assign:#2f9e6f; --work:#2f8f9e;
-    --review:#4f63c4; --routing:#2f7fd6; --client:#5a6b8c; --done:#6f9e2f; --cancelled:#c0392b;
-    --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+    --bg:#f6f7f8; --panel:#ffffff; --ink:#1f2328; --muted:#5b6470; --line:#e4e7eb;
+    --brand:#B32025; --brand2:#8f191d;
+    --approval:#7148b3; --changes:#b3791f; --assign:#217a4a; --work:#2b5fa8;
+    --review:#4f63c4; --routing:#2b5fa8; --client:#7148b3; --done:#217a4a; --cancelled:#b42318;
+    --shadow:0 1px 2px rgba(20,20,25,.04),0 4px 14px rgba(20,20,25,.05);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Segoe UI",Tahoma,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
     font-size:14px;line-height:1.5}
-  html[dir="rtl"] body{font-family:"Segoe UI","Tahoma","Cairo",system-ui,sans-serif}
+  html[dir="rtl"] body{font-family:"IBM Plex Sans Arabic","Segoe UI","Tahoma","Cairo",system-ui,sans-serif}
   button{font-family:inherit;font-size:14px;cursor:pointer}
   a{color:var(--brand2)}
   .hidden{display:none!important}
 
-  /* Top bar */
-  .topbar{position:sticky;top:0;z-index:40;background:var(--brand);color:#fff;
-    display:flex;align-items:center;gap:14px;padding:10px 18px;box-shadow:var(--shadow)}
-  .topbar .logo{font-weight:700;font-size:16px;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
-  .topbar .logo .dot{width:10px;height:10px;border-radius:50%;background:#e8b64c;display:inline-block}
+  /* ===== ERP shell header (white, compact, brand mark + module switcher) ===== */
+  .topbar{position:sticky;top:0;z-index:40;background:var(--panel);color:var(--ink);
+    display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);box-shadow:0 1px 2px rgba(20,20,25,.04)}
+  .lang-sw{white-space:nowrap}
+  .erp-brand{font-weight:800;font-size:15px;letter-spacing:.6px;color:var(--brand);white-space:nowrap;
+    background:transparent;border:0;padding:4px 2px}
+  .crumb{background:transparent;border:0}
+  .dots{display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;border:0;
+    color:var(--muted);padding:2px 6px;border-radius:8px}
+  .dots:hover{background:var(--bg);color:var(--brand)}
+  .dotgrid{display:grid;grid-template-columns:repeat(3,3px);gap:2px}
+  .dotgrid i{width:3px;height:3px;border-radius:50%;background:currentColor;display:block}
+  .dots-l{font-size:9px;letter-spacing:.2px;white-space:nowrap}
+  .dots-wrap{position:relative;display:flex}
+  .mod-pop{position:absolute;inset-inline-start:0;top:44px;width:330px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(16,24,40,.22);z-index:60}
+  .mod-h{padding:11px 14px 8px;font-weight:700;font-size:12px;text-transform:uppercase;
+    letter-spacing:.4px;color:var(--muted)}
+  .mod-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:0 8px 8px}
+  .mod-i{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;font-size:12.5px}
+  .mod-i.on{background:var(--brand);color:#fff;font-weight:700}
+  .mod-i.off{color:var(--muted);opacity:.5;cursor:not-allowed}
+  .mod-ic{font-size:14px}
+  .mod-f{padding:9px 14px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
+  .crumb{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--muted);white-space:nowrap}
+  .crumb b{color:var(--ink);font-weight:700}
+  .crumb .sep{color:var(--line)}
   .topbar .spacer{flex:1}
-  .topbar select,.topbar button{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);
-    padding:6px 10px;border-radius:8px}
-  .topbar select option{color:#111}
-  .topbar .bell{position:relative}
-  .badge{position:absolute;top:-6px;inset-inline-end:-6px;background:var(--cancelled);color:#fff;
-    border-radius:20px;min-width:18px;height:18px;padding:0 4px;font-size:11px;display:flex;align-items:center;justify-content:center}
-  .navlink{background:transparent!important;border-color:transparent!important;opacity:.85}
-  .navlink.active{opacity:1;border-color:rgba(255,255,255,.5)!important;background:rgba(255,255,255,.14)!important}
+  .ic-btn{position:relative;background:transparent;border:0;color:var(--muted);
+    padding:7px 9px;border-radius:8px;font-size:14px;line-height:1}
+  .ic-btn:hover{background:var(--bg);color:var(--brand)}
+  .lang-sw{font-weight:700;font-size:12.5px;letter-spacing:.3px}
+  /* light/dark as a real switch, like the reference */
+  .theme-sw{display:flex;align-items:center;gap:6px}
+  .theme-sw .track{width:30px;height:16px;border-radius:20px;background:var(--line);position:relative;display:inline-block;transition:.18s}
+  .theme-sw .track i{position:absolute;top:2px;inset-inline-start:2px;width:12px;height:12px;border-radius:50%;
+    background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:.18s}
+  :root[data-theme="dark"] .theme-sw .track{background:var(--brand)}
+  :root[data-theme="dark"] .theme-sw .track i{inset-inline-start:16px}
+  .theme-sw .sun,.theme-sw .moon{font-size:11px;opacity:.6}
+  /* responsive header rules live at the END of this stylesheet — see “responsive
+     ERP header”. Placing them here would lose the cascade to the base rules below. */
+  .who{display:flex;align-items:center;gap:9px;padding:4px 6px 4px 10px;border:0;background:transparent;
+    border-inline-start:1px solid var(--line);border-radius:8px;text-align:start}
+  .out-btn{display:flex;align-items:center;justify-content:center}
+  .out-btn:hover{background:var(--red-050,#fdecec);color:var(--brand)}
+  html[dir="rtl"] .out-btn svg{transform:scaleX(-1)}
+  .who-av{width:32px;height:32px;border-radius:50%;color:#fff;display:flex;align-items:center;
+    justify-content:center;font-size:12px;font-weight:700;flex:none}
+  .who-txt{display:flex;flex-direction:column;line-height:1.25}
+  .who-txt b{font-size:13px}
+  .who-txt span{font-size:11.5px;color:var(--muted)}
+  /* demo-only account switcher — a real ERP uses Keycloak SSO, never this */
+  .topbar select{background:var(--bg);color:var(--muted);border:1px dashed var(--line);
+    padding:5px 7px;border-radius:8px;font-size:11.5px;max-width:118px}
+  .up-flag{color:var(--brand);font-size:12px}
+  .up-cnt{background:var(--bg);border-radius:20px;padding:1px 7px;font-size:11.5px;color:var(--muted)}
+  .topbar .badge{position:absolute;top:0;inset-inline-end:2px;background:var(--brand);color:#fff;
+    border-radius:20px;min-width:16px;height:16px;padding:0 4px;font-size:10px;
+    display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)}
+  /* login screen keeps a simple brand row */
+  .topbar .logo{font-weight:800;font-size:15px;letter-spacing:.4px;display:flex;align-items:center;gap:8px;color:var(--brand)}
+  .topbar .logo .dot{width:9px;height:9px;border-radius:50%;background:var(--brand);display:inline-block}
+  .topbar select option{background:var(--panel);color:var(--ink)}
+  .topbar .bell{position:relative;display:flex}
+  #resetBtn{background:var(--panel);color:var(--muted);border:1px solid var(--line);padding:6px 11px;border-radius:8px;font-size:12.5px}
+  #resetBtn:hover{border-color:var(--brand);color:var(--brand)}
 
   /* Layout */
   .wrap{max-width:1080px;margin:22px auto;padding:0 18px}
@@ -122,25 +181,33 @@
 
   /* List */
   .list-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-  .reqrow{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+  .reqrow{display:flex;gap:12px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line);cursor:pointer}
   .reqrow:last-child{border-bottom:none}
-  .reqrow:hover{background:#f9fafb}
-  .reqrow .idcol{font-weight:700;color:var(--brand2);min-width:104px;font-family:monospace;font-size:12.5px;padding-top:2px}
+  .reqrow:hover{background:var(--bg)}
+  .rq-top{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+  .reqrow .idcol{font-weight:700;color:var(--brand);font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.2px}
+  .hotdot{color:var(--changes);font-size:11.5px;line-height:1}
+  .rq-chev{color:var(--line);font-size:17px;flex:none}
+  html[dir="rtl"] .rq-chev{transform:scaleX(-1)}
   .refchip{font-family:monospace;font-weight:700;color:var(--brand2);letter-spacing:.3px}
   .reqrow .main{flex:1}
   .reqrow .t{font-weight:700;font-size:15px}
   .actionflag{background:#fff4e5;color:#b4620a;border:1px solid #f3d3ab;border-radius:20px;
     padding:2px 10px;font-size:11.5px;font-weight:700;white-space:nowrap}
-  .quick-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-top:2px}
-  .quick-actions .btn{padding:6px 9px;font-size:12px;white-space:nowrap}
+  .quick-actions{display:flex;gap:6px;flex:none}
+  .quick-actions .btn{padding:6px 11px;font-size:12.5px;white-space:nowrap}
 
-  /* Status badge */
-  .st{display:inline-flex;align-items:center;gap:6px;color:#fff;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
-  .st::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.85)}
-  .st.approval{background:var(--approval)} .st.changes{background:var(--changes)}
-  .st.assign{background:var(--assign)} .st.work{background:var(--work)}
-  .st.review{background:var(--review)} .st.routing{background:var(--routing)}
-  .st.client{background:var(--client)} .st.done{background:var(--done)} .st.cancelled{background:var(--cancelled)}
+  /* Status badge — deliberately NOT solid: a status is a state, not a control.
+     Tinted pill + coloured dot, so it can never be mistaken for a button sitting
+     next to it (e.g. status "Assign team" beside the Assign team action). */
+  .st{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;
+    font-size:12px;font-weight:600;white-space:nowrap;background:var(--bg);
+    border:1px solid var(--line);color:var(--muted)}
+  .st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+  .st.approval{color:var(--approval)} .st.changes{color:var(--changes)}
+  .st.assign{color:var(--assign)} .st.work{color:var(--work)}
+  .st.review{color:var(--review)} .st.routing{color:var(--routing)}
+  .st.client{color:var(--client)} .st.done{color:var(--done)} .st.cancelled{color:var(--cancelled)}
 
   /* Detail */
   .summary{padding:18px 20px}
@@ -196,7 +263,95 @@
 
   /* compact language and theme buttons (top bar) */
   .lang-btn{min-width:42px;font-weight:800}
-  .icon-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:8px;padding:6px 10px}
+  .icon-btn{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:6px 10px}
+  .icon-btn:hover{border-color:var(--brand);color:var(--brand)}
+
+  /* ===== dashboard: stats + two-column shell ===== */
+  .wrap.wide{max-width:1280px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+  .stat-ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;
+    justify-content:center;font-size:16px;flex:none}
+  .stat-ic.red{background:var(--red-050,#fdecec);color:var(--brand)}
+  .stat-ic.blue{background:#eaf1fb;color:var(--work)}
+  .stat-ic.amber{background:#fdf3e1;color:var(--changes)}
+  .stat-ic.green{background:#e7f6ee;color:var(--assign)}
+  :root[data-theme="dark"] .stat-ic.red{background:#3a1416}
+  :root[data-theme="dark"] .stat-ic.blue{background:#132540}
+  :root[data-theme="dark"] .stat-ic.amber{background:#3a2c12}
+  :root[data-theme="dark"] .stat-ic.green{background:#0f2a1c}
+  .stat-l{font-size:12px;color:var(--muted)}
+  .stat-n{font-size:21px;font-weight:700;line-height:1.2}
+  .dash{display:grid;grid-template-columns:minmax(0,1fr) 316px;gap:16px;align-items:start}
+  .dash-main{min-width:0}
+  .dash-rail{display:flex;flex-direction:column;gap:14px}
+  .rail-card{overflow:hidden}
+  .rail-h{font-weight:700;font-size:13.5px;padding:13px 16px 10px;display:flex;
+    align-items:center;justify-content:space-between;gap:8px}
+  .rail-cnt{background:var(--brand);color:#fff;border-radius:20px;padding:1px 8px;font-size:11px}
+  .rail-empty{padding:0 16px 15px;color:var(--muted);font-size:12.5px}
+  .aq-row{width:100%;display:flex;align-items:center;gap:9px;padding:9px 16px;background:transparent;
+    border:0;border-top:1px solid var(--line);text-align:start}
+  .aq-row:hover{background:var(--bg)}
+  .aq-dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .aq-dot.approval{background:var(--approval)} .aq-dot.changes{background:var(--changes)}
+  .aq-dot.assign{background:var(--assign)}     .aq-dot.work{background:var(--work)}
+  .aq-dot.review{background:var(--review)}     .aq-dot.routing{background:var(--routing)}
+  .aq-dot.client{background:var(--client)}     .aq-dot.done{background:var(--done)}
+  .aq-t{flex:1;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .aq-s{font-size:11px;color:var(--muted);white-space:nowrap}
+  .wf-role{padding:0 16px;font-weight:600;font-size:13px}
+  .wf-sub{padding:3px 16px 15px;color:var(--muted);font-size:12.5px}
+  /* detail rail: workflow guide */
+  .gr-step{display:flex;gap:10px;padding:0 16px 12px}
+  .gr-n{width:22px;height:22px;border-radius:50%;background:var(--bg);border:1px solid var(--line);
+    color:var(--muted);font-size:11px;font-weight:700;display:flex;align-items:center;
+    justify-content:center;flex:none}
+  .gr-n.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .gr-k{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+  .gr-v{font-weight:700;font-size:13px;margin-top:1px}
+  .gr-s{font-size:12px;color:var(--muted);margin-top:2px}
+  .gr-do{margin:0 16px 15px;padding:10px 12px;border-radius:9px;background:var(--bg);
+    border:1px solid var(--line);font-size:12.5px}
+  .gr-do.you{border-color:var(--assign);background:rgba(33,122,74,.08)}
+  .gr-do.you>div:last-child{color:var(--assign);font-weight:600}
+  /* detail rail: team + review */
+  .tr-body{padding:0 16px 15px;display:flex;flex-direction:column;gap:10px}
+  .tr-row{display:flex;flex-direction:column;gap:2px}
+  .tr-k{font-size:11px;font-weight:700;color:var(--muted)}
+  .tr-v{font-size:12.5px;font-weight:600;line-height:1.6}
+
+  /* ===== Upcoming Actions ===== */
+  .upcoming{margin-bottom:0;overflow:hidden}
+  .up-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px 10px}
+  .up-title{font-weight:700;font-size:15.5px;display:flex;align-items:center;gap:8px}
+  .up-link{color:var(--brand);font-weight:600;font-size:13px;cursor:pointer}
+  .up-link:hover{text-decoration:underline}
+  .up-row{display:flex;align-items:center;gap:12px;padding:11px 18px;cursor:pointer;position:relative}
+  .up-row:hover{background:var(--bg)}
+  .up-when{min-width:74px;font-size:12.5px;color:var(--muted);font-weight:600;white-space:nowrap}
+  .up-when.hot{color:var(--brand)}
+  .up-dot{width:9px;height:9px;border-radius:50%;flex:none;position:relative;z-index:1;
+    box-shadow:0 0 0 3px var(--panel)}
+  /* connector line between the dots */
+  .up-row:not(:last-of-type) .up-dot::after{content:"";position:absolute;top:9px;inset-inline-start:4px;
+    width:1px;height:34px;background:var(--line);z-index:0}
+  .up-dot.approval{background:var(--approval)} .up-dot.changes{background:var(--changes)}
+  .up-dot.assign{background:var(--assign)}     .up-dot.work{background:var(--work)}
+  .up-dot.review{background:var(--review)}     .up-dot.routing{background:var(--routing)}
+  .up-dot.client{background:var(--client)}     .up-dot.done{background:var(--done)}
+  .up-dot.cancelled{background:var(--cancelled)}
+  .up-main{flex:1;min-width:0}
+  .up-act{font-weight:700;font-size:14px}
+  .up-sub{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .up-av{width:32px;height:32px;border-radius:50%;color:#fff;display:flex;align-items:center;
+    justify-content:center;font-size:11px;font-weight:700;flex:none}
+  .up-foot{width:100%;text-align:start;background:transparent;border:0;border-top:1px solid var(--line);
+    padding:13px 18px;color:var(--brand);font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
+  .up-foot:hover{background:var(--bg)}
+  .up-chev{font-size:15px}
+  html[dir="rtl"] .up-chev{transform:scaleX(-1)}
 
   /* dashboard filter tabs */
   .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
@@ -216,8 +371,11 @@
 
   /* dark theme */
   :root[data-theme="dark"]{
-    --bg:#0e131b; --panel:#161d28; --ink:#e6e9ef; --muted:#93a0b2; --line:#2a3442;
-    --brand:#182739; --brand2:#5f95d0; --shadow:0 1px 3px rgba(0,0,0,.45);
+    --bg:#15171b; --panel:#1c1f24; --ink:#eceef1; --muted:#a4acb6; --line:#2c3038;
+    --brand:#B32025; --brand2:#e0666a; --shadow:0 1px 3px rgba(0,0,0,.45);
+    /* semantic states lifted for contrast on dark surfaces */
+    --approval:#9d78d6; --changes:#d6a04a; --assign:#3da76e; --work:#5b8fd6;
+    --review:#7b8ce0; --routing:#5b8fd6; --client:#9d78d6; --done:#3da76e; --cancelled:#e0666a;
     color-scheme:dark;
   }
   :root[data-theme="dark"] .btn{background:#1e2733;color:var(--ink);border-color:var(--line)}
@@ -273,7 +431,64 @@
 
   /* modal */
   .modal-ov{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:80;padding:18px}
-  .modal{background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(16,24,40,.28);padding:20px 22px;width:100%;max-width:440px}
+  .modal{background:var(--panel);color:var(--ink);border-radius:14px;box-shadow:0 12px 40px rgba(16,24,40,.28);padding:20px 22px;width:100%;max-width:440px}
+  .modal-lg{max-width:560px;max-height:calc(100vh - 60px);overflow-y:auto}
+  .modal-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-h h2{margin:0}
+  .modal-x{background:transparent;border:0;color:var(--muted);font-size:15px;padding:2px 6px;border-radius:7px}
+  .modal-x:hover{background:var(--bg);color:var(--ink)}
+  .modal-f{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+  .fld-l{font-weight:700;font-size:12.5px;margin-bottom:6px}
+  /* wizard step header */
+  .wiz{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:10px 0 8px}
+  .wiz-i{display:flex;align-items:center;gap:7px}
+  .wiz-s{width:22px;height:22px;border-radius:50%;background:var(--bg);border:1px solid var(--line);
+    color:var(--muted);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+  .wiz-s.on{background:var(--ink);border-color:var(--ink);color:var(--panel)}
+  .wiz-s.done{background:var(--assign);border-color:var(--assign);color:#fff}
+  .wiz-l{font-size:12.5px;color:var(--muted)}
+  .wiz-l.on{color:var(--ink);font-weight:700}
+  .wiz-bar{height:4px;border-radius:4px;background:var(--line);overflow:hidden;margin-bottom:16px}
+  .wiz-bar i{display:block;height:100%;background:var(--brand);transition:width .25s}
+  .seq-kind{font-size:11px;color:var(--muted);white-space:nowrap}
+  /* assign-modal timeline preview */
+  .tlp{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px;border:1px solid var(--line);
+    border-radius:10px;background:var(--bg)}
+  .tlp-i{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:78px}
+  .tlp-av{width:30px;height:30px;border-radius:50%;color:#fff;display:flex;align-items:center;
+    justify-content:center;font-size:11px;font-weight:700}
+  .tlp-n{font-size:11.5px;font-weight:700;text-align:center}
+  .tlp-k{font-size:10px;color:var(--muted)}
+  .tlp-a{color:var(--line);font-size:16px}
+  html[dir="rtl"] .tlp-a{transform:scaleX(-1)}
+  /* drag-to-order work sequence */
+  .seq{display:flex;flex-direction:column;gap:12px}
+  .seq-g{display:flex;flex-direction:column;gap:6px}
+  .seq-gh{font-size:11.5px;font-weight:700;color:var(--muted)}
+  .seq-row.static{cursor:default;opacity:.85}
+  .seq-n.alt{background:var(--line);color:var(--muted)}
+  .seq-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:9px;background:var(--bg);cursor:grab}
+  .seq-row.dragging{opacity:.45}
+  .seq-row.over{border-color:var(--brand);box-shadow:0 0 0 2px var(--red-050,#fdecec)}
+  .seq-n{width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;
+    font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+  .seq-grip{color:var(--muted);font-size:13px}
+  .seq-name{flex:1;font-size:13px;font-weight:600}
+  .seq-btns{display:flex;gap:3px}
+  .seq-b{background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--muted);
+    font-size:10px;padding:3px 6px;line-height:1}
+  .seq-b:disabled{opacity:.35}
+  .seq-b:not(:disabled):hover{border-color:var(--brand);color:var(--brand)}
+  /* fixed stage order strip */
+  .stagebar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:16px;padding-top:14px;
+    border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+  .sb-i{display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .sb-d{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .sb-d.work{background:var(--work)} .sb-d.review{background:var(--review)}
+  .sb-d.client{background:var(--client)} .sb-d.done{background:var(--done)}
+  .sb-a{color:var(--line)}
+  html[dir="rtl"] .sb-a{transform:scaleX(-1)}
 
   /* Mobile layout */
   @media(max-width:720px){
@@ -320,9 +535,65 @@
 
   @media(max-width:380px){
     .topbar .logo{min-width:120px}
-    .topbar .navlink{font-size:11px}
-    .topbar #roleSel{max-width:118px}
     .quick-actions .btn{flex-basis:100%}
+  }
+
+  /* ===== responsive ERP header =====
+     Sheds the least important element first so the bar NEVER wraps:
+     label → glyphs → breadcrumb prefix → role line → module switcher → name →
+     breadcrumb. Must sit after the base rules to win the cascade. */
+  @media(max-width:1180px){
+    .dots-l{display:none}
+    .theme-sw .sun,.theme-sw .moon{display:none}
+    .topbar{gap:8px;padding:8px 12px}
+  }
+  @media(max-width:900px){
+    .crumb span:first-child,.crumb .sep{display:none}
+    .who-txt span{display:none}
+    .erp-brand{font-size:13px;letter-spacing:.3px}
+  }
+  @media(max-width:640px){
+    .topbar{gap:6px;padding:7px 10px}
+    .dots{display:none}
+    .who{padding-inline-start:6px;border-inline-start:0}
+    .who-txt{display:none}                       /* avatar only */
+    .crumb b{font-size:12.5px}
+    .lang-sw{font-size:11px;padding:6px 5px}
+    .ic-btn{padding:6px 5px}
+  }
+  @media(max-width:430px){
+    .crumb{display:none}                         /* page title already says where you are */
+    .erp-brand{font-size:12px}
+  }
+
+  /* ===== responsive dashboard =====
+     These MUST come after the base .dash/.stats rules — same specificity, so the
+     later rule wins and an earlier media query would silently lose. */
+  @media(max-width:1100px){
+    .dash{grid-template-columns:minmax(0,1fr)}
+    .dash-rail{flex-direction:row;flex-wrap:wrap}
+    .dash-rail>*{flex:1 1 290px}
+  }
+  @media(max-width:820px){
+    .stats{grid-template-columns:repeat(2,1fr);gap:10px}
+    .stat{padding:12px 13px}
+    .stat-n{font-size:19px}
+  }
+  @media(max-width:720px){
+    .reqrow{flex-wrap:wrap;gap:9px}
+    .reqrow .main{flex:1 1 100%}
+    .reqrow .st{order:-1}
+    .quick-actions{width:100%}
+    .quick-actions .btn{flex:1}
+    .rq-chev{display:none}
+    .dash-rail{flex-direction:column}
+    .dash-rail>*{flex:1 1 auto}
+  }
+  @media(max-width:460px){
+    .stats{grid-template-columns:1fr 1fr;gap:8px}
+    .stat{flex-direction:column;align-items:flex-start;gap:6px}
+    .wrap{padding:0 12px}
+    .list-head h1{font-size:19px}
   }
 </style>
 </head>
@@ -336,7 +607,8 @@
    Single file · vanilla JS · localStorage · bilingual EN/AR (RTL)
    ============================================================ */
 
-const LS_KEY = "watan_demo_v1";
+/* own storage key — must NOT share state with the v6 workflow-demo */
+const LS_KEY = "watan_mediaops_v7";
 
 /* ---------- i18n dictionary ---------- */
 const DICT = {
@@ -358,6 +630,32 @@ const DICT = {
   nav_requests:   {en:"Requests", ar:"الطلبات"},
   nav_new:        {en:"New request", ar:"طلب جديد"},
   nav_archive:    {en:"Archive", ar:"الأرشيف"},
+  /* ERP shell header */
+  all_modules:    {en:"All Modules", ar:"كل الوحدات"},
+  mod_soon:       {en:"Another ERP module — outside this task", ar:"وحدة أخرى في النظام — خارج نطاق هذه المهمة"},
+  mod_note:       {en:"Media Operations is the module in scope. The others are shown to prove the shared ERP.",
+                   ar:"عمليات الإعلام هي الوحدة المشمولة. البقية معروضة لإثبات أن النظام مشترك."},
+  erp_word:       {en:"ERP", ar:"نظام الوطن"},
+  module_name:    {en:"Media Operations", ar:"عمليات الإعلام"},
+  my_requests:    {en:"My Requests", ar:"طلباتي"},
+  /* dashboard */
+  greeting:       {en:"Here is what needs your attention", ar:"إليك ما يحتاج انتباهك"},
+  stat_total:     {en:"Total requests", ar:"إجمالي الطلبات"},
+  stat_inprog:    {en:"In production", ar:"قيد الإنتاج"},
+  stat_dueweek:   {en:"Due this week", ar:"مستحق هذا الأسبوع"},
+  stat_done:      {en:"Completed", ar:"مكتملة"},
+  aq_h:           {en:"Your action queue", ar:"قائمة إجراءاتك"},
+  aq_empty:       {en:"No action is needed from you right now.", ar:"لا يوجد إجراء مطلوب منك حاليًا."},
+  wf_h:           {en:"Video production workflow", ar:"سير عمل إنتاج الفيديو"},
+  wf_guide:       {en:"Workflow guide", ar:"دليل سير العمل"},
+  wf_generic:     {en:"Acts only on their own stage.", ar:"يتصرّف في مرحلته فقط."},
+  /* upcoming actions card */
+  upcoming_h:     {en:"Upcoming Actions", ar:"الإجراءات القادمة"},
+  see_all_actions:{en:"See all actions", ar:"عرض كل الإجراءات"},
+  upcoming_empty: {en:"Nothing scheduled for you right now.", ar:"لا يوجد شيء مجدول لك حاليًا."},
+  due_today:      {en:"Today", ar:"اليوم"},
+  due_tomorrow:   {en:"Tomorrow", ar:"غدًا"},
+  overdue:        {en:"Overdue", ar:"متأخر"},
   notifications:  {en:"Notifications", ar:"الإشعارات"},
   no_noti:        {en:"No notifications", ar:"لا توجد إشعارات"},
   mark_read:      {en:"Mark all read", ar:"تعليم الكل كمقروء"},
@@ -374,14 +672,18 @@ const DICT = {
   f_client:       {en:"Client name", ar:"اسم العميل"},
   f_select_client:{en:"Select existing client", ar:"اختر عميلًا موجودًا"},
   client_pick_none:{en:"— Select a client —", ar:"— اختر عميلًا —"},
-  select_client_hint:{en:"Pick a client to auto-fill their details, or type a new one below.",
-                      ar:"اختر عميلًا لتعبئة بياناته تلقائيًا، أو اكتب عميلًا جديدًا بالأسفل."},
+  pick_none:      {en:"— Select —", ar:"— اختر —"},
+  select_client_hint:{en:"Pick a client to auto-fill their contact details (you can still edit them). Coverage type and event type are always chosen per request.",
+                      ar:"اختر عميلًا لتعبئة بيانات التواصل تلقائيًا (ويمكنك تعديلها). نوع التغطية ونوع الفعالية تُختاران في كل طلب على حدة."},
   f_contact:      {en:"Responsible person", ar:"الشخص المسؤول"},
   f_phone:        {en:"Phone", ar:"الهاتف"},
   f_phone2:       {en:"Backup phone (optional)", ar:"هاتف إضافي (اختياري)"},
   add_phone2:     {en:"➕ Add backup number (optional)", ar:"➕ إضافة رقم إضافي (اختياري)"},
   phone2_hint:    {en:"Called if the primary number doesn't answer.", ar:"يُتصل به إذا لم يرد الرقم الأساسي."},
   f_email:        {en:"Email", ar:"الإيميل"},
+  f_email2:       {en:"Backup email (optional)", ar:"بريد إضافي (اختياري)"},
+  add_email2:     {en:"➕ Add backup email (optional)", ar:"➕ إضافة بريد إضافي (اختياري)"},
+  email2_hint:    {en:"Copied on notifications if the primary bounces.", ar:"تُرسل له نسخة إذا تعذّر البريد الأساسي."},
   f_event_date:   {en:"Event date", ar:"تاريخ الفعالية"},
   f_coverage:     {en:"Coverage type", ar:"نوع التغطية"},
   f_event_type:   {en:"Event type", ar:"نوع الفعالية"},
@@ -433,7 +735,8 @@ const DICT = {
   resubmit:       {en:"Edit & resubmit", ar:"تعديل وإعادة إرسال"},
   forward_head:   {en:"Fix & forward to Head", ar:"تعديل وإرسال للرئيس"},
   send_requester: {en:"Send back to Requester", ar:"إرجاع لمقدم الطلب"},
-  mark_done:      {en:"Mark stage done", ar:"إنهاء المرحلة"},
+  /* v7/T4: "mark_done" now only closes Preparation. The generic إنهاء المرحلة is gone. */
+  prep_done:      {en:"Preparation complete → Shooting", ar:"اكتمل التحضير ← التصوير"},
   approve_g1:     {en:"Approve — Direction & Production", ar:"اعتماد — الإخراج والإنتاج"},
   approve_g2:     {en:"Approve — Editorial & Publishing", ar:"اعتماد — التحرير والنشر"},
   publish:        {en:"Publish", ar:"نشر"},
@@ -445,14 +748,32 @@ const DICT = {
   continue_rout:  {en:"Continue (revise)", ar:"متابعة (تعديل)"},
 
   /* assign team panel */
-  assign_h:       {en:"Assign team (pick the people, once)", ar:"تعيين الفريق (اختيار الأشخاص مرة واحدة)"},
+  assign_h:       {en:"Assign the production team", ar:"تعيين فريق الإنتاج"},
+  asg_sub:        {en:"Assignment happens once. Revision routing later only chooses the restart stage.",
+                   ar:"التعيين يتم مرة واحدة. توجيه التعديلات لاحقًا يختار مرحلة الاستئناف فقط."},
+  asg_order:      {en:"Work order", ar:"ترتيب العمل"},
+  asg_step1:      {en:"Select the people", ar:"اختيار الأشخاص"},
+  asg_step2:      {en:"Set the work order", ar:"ترتيب العمل"},
+  asg_next:       {en:"Next", ar:"التالي"},
+  asg_preview:    {en:"Team timeline", ar:"الجدول الزمني للفريق"},
+  asg_back:       {en:"Back", ar:"رجوع"},
+  grp1_short:     {en:"Review group 1", ar:"مجموعة المراجعة ١"},
+  grp2_short:     {en:"Review group 2", ar:"مجموعة المراجعة ٢"},
+  asg_order_hint: {en:"Drag, or use ▲▼, to set who shoots first.", ar:"اسحب أو استخدم ▲▼ لتحديد من يصوّر أولًا."},
+  asg_pick_first: {en:"Pick the people above first.", ar:"اختر الأشخاص بالأعلى أولًا."},
+  asg_order_hint2:{en:"Order applies within each stage — editing can never start before shooting.",
+                   ar:"الترتيب داخل كل مرحلة — لا يمكن أن يبدأ المونتاج قبل التصوير."},
+  editorial_cov:  {en:"Editorial coverage", ar:"التغطية التحريرية"},
+  asg_locked:     {en:"The stage order itself is fixed and cannot be reordered.", ar:"ترتيب المراحل نفسه ثابت ولا يمكن تغييره."},
   producers:      {en:"Producers", ar:"المنتجون"},
   shooters:       {en:"Shooting Team", ar:"فريق التصوير"},
   editors:        {en:"Editors", ar:"المونتاج"},
   editorial_flagged:{en:"The requester flagged these editorial roles for this request:", ar:"حدّد مقدم الطلب هذه الأدوار التحريرية لهذا الطلب:"},
   no_editorial:   {en:"No editorial role was requested for this request.", ar:"لم يُطلب أي دور تحريري لهذا الطلب."},
-  reporter_rule:  {en:"Per policy, a copy goes to zalmushaigri@alwatannews.net and the requested editorial staff (reporter / journalist / Heba) are assigned through the Editorial Manager only. Once you assign the team, the request goes to the Editorial Manager automatically.",
-                   ar:"حسب السياسة، تُرسَل نسخة إلى zalmushaigri@alwatannews.net ويُعيَّن الطاقم التحريري المطلوب (مراسل / صحفي / هبة) عبر مسؤول المحررين فقط. بعد تعيين الفريق يُحال الطلب إلى مسؤول المحررين تلقائيًا."},
+  reporter_rule:  {en:"You assign the technical teams only (Shooting, Editing). Generic editorial roles are resolved by the Editorial Manager after you assign — named people are already assigned and skip him.",
+                   ar:"أنت تُعيّن الفرق الفنية فقط (التصوير، المونتاج). الأدوار التحريرية العامة يحسمها مسؤول المحررين بعد التعيين — أما الأشخاص المحددون فهم معيَّنون سلفًا ولا يمرّون عليه."},
+  named_already:  {en:"Already assigned (named by the requester)", ar:"مُعيَّن مسبقًا (حدّده مقدّم الطلب)"},
+  generic_pending:{en:"Goes to the Editorial Manager", ar:"يُحال إلى مسؤول المحررين"},
   finalize_team:  {en:"Assign team", ar:"تعيين الفريق"},
   assign_pick_all:{en:"Select at least one person from each team (shooting, editor) to enable Assign.",
                    ar:"اختر شخصًا واحدًا على الأقل من كل فريق (تصوير، مونتاج) لتفعيل التعيين."},
@@ -462,7 +783,9 @@ const DICT = {
 
   /* journal panel */
   journal_h:      {en:"Select editorial staff", ar:"اختيار الطاقم التحريري"},
-  journal_pick:   {en:"Choose who covers this request:", ar:"اختر من يغطي هذا الطلب:"},
+  journal_pick:   {en:"Pick a person for each generic role still unresolved:", ar:"اختر شخصًا لكل دور عام لم يُحسم بعد:"},
+  already_assigned:{en:"Already assigned by the requester — no selection needed",
+                    ar:"مُعيَّن مسبقًا من مقدّم الطلب — لا حاجة للاختيار"},
   confirm_reporter:{en:"Confirm selection & start production", ar:"تأكيد الاختيار وبدء الإنتاج"},
 
   /* revision routing */
@@ -506,6 +829,7 @@ const DICT = {
   kind_editor:    {en:"Video editor", ar:"فني مونتاج"},
   kind_reporter:  {en:"Reporter / presenter", ar:"مراسل / مقدّم"},
   note_change:    {en:"Change note (recorded in the audit trail)", ar:"ملاحظة التعديل (تُسجَّل في مسار التدقيق)"},
+  note_attach:    {en:"Attach files (optional) — a screenshot or marked-up cut", ar:"إرفاق ملفات (اختياري) — لقطة شاشة أو نسخة معلَّمة"},
 
   /* per-action note titles */
   note_t_changes: {en:"Reason for requested changes", ar:"سبب طلب التعديلات"},
@@ -541,6 +865,12 @@ const DICT = {
   edit_h:         {en:"Edit & resubmit request", ar:"تعديل الطلب وإعادة إرساله"},
   edit_note_l:    {en:"What did you change? (note linked to this edit)", ar:"ما الذي غيّرته؟ (ملاحظة مرتبطة بهذا التعديل)"},
   save_resubmit:  {en:"Save & resubmit", ar:"حفظ وإعادة إرسال"},
+  /* v7/T2 — in-place edit while still in Marketing approval */
+  edit_request:   {en:"Edit request", ar:"تعديل الطلب"},
+  edit_inplace_h: {en:"Edit request", ar:"تعديل الطلب"},
+  edit_inplace_note:{en:"Marketing has not approved yet, so your changes apply immediately. The edit is recorded on the timeline with a before/after comparison. Once Marketing approves, use “Request a change” instead.",
+                     ar:"لم يوافق التسويق بعد، لذا تُطبَّق تعديلاتك فورًا. يُسجَّل التعديل في السجل الزمني مع مقارنة قبل/بعد. بعد موافقة التسويق استخدم «طلب تعديل» بدلًا من ذلك."},
+  save_update:    {en:"Save changes", ar:"حفظ التعديلات"},
   note_label:     {en:"Note", ar:"ملاحظة"},
 
   g_here:         {en:"You are here", ar:"أنت هنا"},
@@ -565,25 +895,33 @@ const DICT = {
   field_sim:      {en:"simulated location (demo)", ar:"موقع تجريبي (عرض)"},
   field_locating: {en:"Getting your location…", ar:"جارٍ تحديد موقعك…"},
   field_you:      {en:"you", ar:"أنت"},
-  field_gate:     {en:"Record your start, then your finish — the stage can only be ended after that.",
-                   ar:"سجّل بدء عملك ثم إنهاءه — لا يمكن إنهاء المرحلة إلا بعد ذلك."},
+  field_gate:     {en:"Record your start, then your finish. The stage advances once every assigned member has finished.",
+                   ar:"سجّل بدء عملك ثم إنهاءه. تنتقل المرحلة بعد أن ينهي كل عضو معيَّن عمله."},
+  stage_waiting:  {en:"Waiting for teammates to finish", ar:"بانتظار إنهاء بقية الفريق"},
 
   /* dashboard filter tabs */
   tab_all:        {en:"All", ar:"الكل"},
-  tab_mine:       {en:"Needs my action", ar:"يتطلّب إجرائي"},
-  tab_approvals:  {en:"Approvals", ar:"الموافقات"},
+  tab_mine:       {en:"Needs your action", ar:"بانتظار إجراء منك"},
+  tab_approvals:  {en:"Awaiting approval", ar:"بانتظار الموافقة"},
   tab_production: {en:"In production", ar:"قيد الإنتاج"},
   tab_client:     {en:"With client", ar:"لدى العميل"},
+  tab_archive:    {en:"Archive", ar:"الأرشيف"},
+  tab_cancelled:  {en:"Cancelled", ar:"ملغى"},
 };
 function t(k){ const e=DICT[k]; return e ? e[state.lang] : k; }
 
 /* ---------- roles ---------- */
-const ROLES = ["requester","marketing","head","journal","client"];
+const ROLES = ["requester","marketing","head","journal","publisher","client"];
 const ROLE_LABEL = {
   requester:{en:"Requester",ar:"مقدم الطلب",ic:"📝"},
   marketing:{en:"Marketing Manager",ar:"مدير التسويق",ic:"📣"},
   head:{en:"Production Head",ar:"رئيس قسم الإنتاج",ic:"🎬"},
   journal:{en:"Editorial Manager",ar:"مسؤول المحررين",ic:"🗞️"},
+  /* v7/T6 placeholder — real publishing role still OPEN with Ahmed.
+     Deliberately NOT called "Publishing Officer": that title already belongs to the
+     Editorial & Publishing REVIEWER (aabdulla). Whether they are the same person is
+     one of the open questions. */
+  publisher:{en:"Publisher (role to confirm)",ar:"جهة النشر (قيد التأكيد)",ic:"🚀"},
   team:{en:"Production Team",ar:"فريق الإنتاج",ic:"🎥"},
   /* review1/review2 are no longer login roles — they are the two review *stages*.
      Kept here so timeline/owner labels for the stage kinds still render nicely. */
@@ -626,9 +964,31 @@ function roleName(r){
   const k = kindOf(r);
   return KIND_LABEL[k] ? (r+" · "+KIND_LABEL[k][state.lang]) : r;
 }
+/* Signed-in identity for the ERP header. Org roles get a neutral placeholder person;
+   staff already log in under their real name; reviewers show their job title.
+   "Mariam Al Nasser" is the approved neutral Marketing placeholder. */
+const PERSON = {
+  requester:{en:"Noor Al Khalifa", ar:"نور آل خليفة"},
+  marketing:{en:"Mariam Al Nasser", ar:"مريم الناصر"},
+  head:     {en:"Khalid Al Sayegh", ar:"خالد الصايغ"},
+  journal:  {en:"Zahra Al Mushaigri", ar:"زهراء المشيقري"},
+  publisher:{en:"Publisher (to confirm)", ar:"جهة النشر (قيد التأكيد)"},
+  client:   {en:"Client contact", ar:"ممثل العميل"},
+};
+function personName(id){
+  if(PERSON[id]) return PERSON[id][state.lang];
+  if(REVIEWERS[id]) return REVIEWERS[id][state.lang];
+  return id;                       /* staff accounts ARE the person's name */
+}
+/* the smaller line under the name — the person's role/stage, never a duplicate name */
+function roleSubLabel(id){
+  if(REVIEWERS[id]) return stageLabel(stageOf(id));
+  if(isStaff(id))  return KIND_LABEL[STAFF[id]] ? KIND_LABEL[STAFF[id]][state.lang] : "";
+  return roleName(id);
+}
 function avatarBg(id){
-  const m={requester:"#2f8f9e",marketing:"#6d5ac4",head:"#1f3a5f",journal:"#4f63c4",
-           review1:"#4f63c4",review2:"#3f53b4",client:"#5a6b8c"};
+  const m={requester:"#2b5fa8",marketing:"#7148b3",head:"#B32025",journal:"#4f63c4",
+           publisher:"#217a4a",review1:"#4f63c4",review2:"#3f53b4",client:"#5b6470"};
   if(m[id]) return m[id];
   if(REVIEWERS[id]) return REVIEWERS[id].stage==="review1"?"#4f63c4":"#3f53b4";
   const k=STAFF[id]; return k==="producer"?"#2f9e6f":k==="shooter"?"#8a5ac4":k==="editor"?"#2f8f9e":"#d9822b";
@@ -649,7 +1009,11 @@ const STATUS = {
   revision_routing:    {cls:"routing",  owner:["head"], step:5},
   client_version:      {cls:"client",   owner:["client"], step:6},
   cancellation_request:{cls:"changes",  owner:["head"], step:6},
-  ready_to_publish:    {cls:"work",     owner:["editor","client"], step:7},
+  /* v7/T6: after client approval the request LEAVES the client's action queue and
+     lands with a publisher. ⚠️ OPEN — the real role/account is unknown; مسؤول النشر
+     is a deliberate placeholder until Ahmed answers. The client keeps read-only
+     visibility plus the agreed ONE final-change round, but owes no action. */
+  ready_to_publish:    {cls:"work",     owner:["publisher"], step:7},
   published:           {cls:"done",     owner:[], step:8},
   cancelled:           {cls:"cancelled",owner:[], step:8},
 };
@@ -658,7 +1022,8 @@ const STATUS_LABEL = {
   changes_requester:{en:"Changes requested (Requester)",ar:"تعديلات مطلوبة (مقدم الطلب)"},
   head_approval:{en:"Head approval",ar:"موافقة رئيس القسم"},
   changes_marketing:{en:"Changes requested (Marketing)",ar:"تعديلات مطلوبة (التسويق)"},
-  assign_team:{en:"Assign team",ar:"تعيين الفريق"},
+  /* a STATE, phrased differently from the "Assign team" ACTION button */
+  assign_team:{en:"Awaiting assignment",ar:"بانتظار التعيين"},
   journal_selection:{en:"Reporter selection (Editorial Manager)",ar:"اختيار المراسل (مسؤول المحررين)"},
   in_progress:{en:"In progress",ar:"قيد التنفيذ"},
   shooting:{en:"Shooting",ar:"التصوير"},
@@ -707,15 +1072,15 @@ const STAGE_GUIDE = {
   in_progress:{
     d:{en:"Preparation & planning by the assigned shooting team.",ar:"التحضير والتخطيط بواسطة فريق التصوير المعيَّن."},
     n:{en:"Next stage → Shooting (التصوير).",ar:"المرحلة التالية ← التصوير."},
-    o:{en:"When planning is done, mark the stage done.",ar:"عند انتهاء التحضير، أنهِ المرحلة."}},
+    o:{en:"When preparation is complete, confirm to move to Shooting.",ar:"عند اكتمال التحضير، أكّد للانتقال إلى التصوير."}},
   shooting:{
     d:{en:"Filming on location — Shooting (التصوير).",ar:"التصوير في الموقع."},
     n:{en:"Next stage → Editing (المونتاج).",ar:"المرحلة التالية ← المونتاج."},
-    o:{en:"Field crew: record your start, then your finish — the stage can be ended after that.",ar:"الطاقم الميداني: سجّل بدءك ثم إنهاءك — بعدها يمكن إنهاء المرحلة."}},
+    o:{en:"Record ▶ Start work, then ⏹ Finish work. The stage advances by itself once every assigned member has finished.",ar:"سجّل ▶ بدء العمل ثم ⏹ إنهاء العمل. تنتقل المرحلة تلقائيًا بعد أن ينهي كل عضو معيَّن عمله."}},
   editing:{
     d:{en:"Cut, graphics & audio by the video editor — Editing (المونتاج).",ar:"القص والغرافيك والصوت بواسطة فني المونتاج (المونتاج)."},
     n:{en:"Next → Internal review (both stages).",ar:"التالي ← المراجعة الداخلية (المرحلتان)."},
-    o:{en:"Record your start, then your finish — after that you can send it to internal review.",ar:"سجّل بدءك ثم إنهاءك — بعدها يمكنك إرساله للمراجعة الداخلية."}},
+    o:{en:"Record ▶ Start work, then ⏹ Finish work. It goes to internal review once every assigned editor has finished.",ar:"سجّل ▶ بدء العمل ثم ⏹ إنهاء العمل. يُرسَل للمراجعة الداخلية بعد أن ينهي كل فني مونتاج معيَّن عمله."}},
   internal_review:{
     d:{en:"Internal review — two stages (Direction & Production, then Editorial & Publishing); one approval each.",ar:"المراجعة الداخلية — مرحلتان (الإخراج والإنتاج، ثم التحرير والنشر)؛ اعتماد واحد لكلٍّ."},
     n:{en:"Both stages approve → Client version. Any change → Revision routing.",ar:"اعتماد المرحلتين ← نسخة العميل. أي تعديل ← توجيه التعديلات."},
@@ -733,9 +1098,9 @@ const STAGE_GUIDE = {
     n:{en:"Confirm → Cancelled. Continue → Revision routing.",ar:"تأكيد ← ملغى. متابعة ← توجيه التعديلات."},
     o:{en:"Confirm the cancellation, or continue and revise.",ar:"أكّد الإلغاء، أو تابع وعدّل."}},
   ready_to_publish:{
-    d:{en:"Approved by the client — final publishing details.",ar:"اعتمده العميل — تفاصيل النشر النهائية."},
+    d:{en:"Client approved — with the publisher now, no longer in the client's queue.",ar:"اعتمده العميل — لدى مسؤول النشر، ولم يعد في قائمة العميل."},
     n:{en:"Publish → Published & archived (point of no return).",ar:"نشر ← تم النشر والأرشفة (نقطة اللاعودة)."},
-    o:{en:"Set caption/channel and Publish.",ar:"حدّد العنوان/القناة وانشُر."}},
+    o:{en:"Press Publish. No link or attachment is required.",ar:"اضغط نشر. لا يلزم رابط أو مرفق."}},
   published:{ d:{en:"Published & archived — permanent record.",ar:"تم النشر والأرشفة — سجل دائم."}, n:{en:"—",ar:"—"}, o:{en:"",ar:""}},
   cancelled:{ d:{en:"Cancelled / rejected — task closed, reason recorded.",ar:"ملغى / مرفوض — أُغلق الطلب، السبب مسجّل."}, n:{en:"—",ar:"—"}, o:{en:"",ar:""}},
 };
@@ -864,7 +1229,7 @@ function seed(){
     ]};
 }
 function tl(actor,en,ar,time){ return {actor, en, ar, time: time||Date.now()}; }
-function tlNote(actor,en,ar,note){ return {actor, en, ar, note:note||"", time:Date.now()}; }
+function tlNote(actor,en,ar,note,files){ return {actor, en, ar, note:note||"", files:files&&files.length?files:undefined, time:Date.now()}; }
 function noti(role,reqId,en,ar){ return {id:uid(), role, reqId, en, ar, read:false, time:Date.now()}; }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function migrateSavedWorkflow(saved){
@@ -926,6 +1291,7 @@ function save(){
         (r.attachments||[]).forEach(a=>{ delete a.url; });
         if(r.changeReq) (r.changeReq.attachments||[]).forEach(a=>{ delete a.url; });
         (r.comments||[]).forEach(c=>(c.files||[]).forEach(a=>{ delete a.url; }));
+        (r.timeline||[]).forEach(e=>(e.files||[]).forEach(a=>{ delete a.url; }));
       });
       localStorage.setItem(LS_KEY, JSON.stringify(slim));
     }catch(e2){}
@@ -947,11 +1313,16 @@ function fmtDay(s){ if(!s) return "—"; const d=new Date(s); return d.toLocaleD
 function todayISO(){ const d=new Date(); const l=new Date(d.getTime()-d.getTimezoneOffset()*60000); return l.toISOString().slice(0,10); }
 function refOf(rq){ return "VPR-"+new Date(rq.created).getFullYear()+"-"+String(rq.id).padStart(4,"0"); }
 function reqById(id){ return state.requests.find(r=>r.id===id); }
-function needsEditorial(req){ return !!(req && req.assign && (req.assign.reporterNeeded || req.assign.journalistNeeded || req.assign.hebaNeeded)); }
-/* every requested editorial role has a person picked */
+/* v7/T3 — person vs role, evaluated PER SELECTION (not per request):
+   a GENERIC role (🎤 reporter / 📰 journalist) has nobody assigned yet, so it must go to
+   the Editorial Manager. A NAMED PERSON is already assigned and skips him entirely.
+   Mixed case: a named person + a generic role still goes to the Editorial Manager, but
+   only to resolve the generic one — the named person is never re-picked. */
+function needsEditorial(req){ return !!(req && req.assign && (req.assign.reporterNeeded || req.assign.journalistNeeded)); }
+/* every GENERIC editorial role has a person picked (named people need no picking) */
 function editorialComplete(req){
   const a=req&&req.assign; if(!a) return true;
-  return (!a.reporterNeeded || !!a.reporter) && (!a.journalistNeeded || !!a.journalist) && (!a.hebaNeeded || !!a.heba);
+  return (!a.reporterNeeded || !!a.reporter) && (!a.journalistNeeded || !!a.journalist);
 }
 /* chosen editorial people as "Role: Name" parts */
 function editorialStaffParts(rq){
@@ -984,6 +1355,34 @@ function fieldGated(rq,uid){
   const rec=(rq.field||{})[uid]||{};
   return !(rec.start && rec.end);
 }
+/* v7/T4 — the stage closes when the LAST required member finishes.
+   Each member's ⏹ إنهاء العمل stops only their own tracking; when every assigned
+   member on the current stage has an end stamp, the request advances by itself.
+   There is no separate "إنهاء المرحلة" button any more. */
+function stageAllFinished(rq, status){
+  const members=stageMembers(rq,status);
+  if(!members.length) return false;
+  const recs=rq.field||{};
+  return members.every(n=>recs[n] && recs[n].start && recs[n].end);
+}
+function finishStageIfDone(rq){
+  if(!TRACK_STAGES.includes(rq.status)) return false;
+  if(!stageAllFinished(rq,rq.status)) return false;
+  const next = rq.status==="shooting" ? "editing" : "internal_review";
+  if(next==="internal_review"){
+    rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
+    addTl(rq,"All assigned members finished — sent to internal review (two stages).",
+             "أنهى جميع الأعضاء المعيَّنين — أُرسل للمراجعة الداخلية (مرحلتان).");
+    rq.status="internal_review";
+    notifyReviewers(rq,"A video is awaiting internal review.","فيديو بانتظار المراجعة الداخلية.");
+  }else{
+    addTl(rq,"All assigned members finished — moved to "+statusLabel(next)+".",
+             "أنهى جميع الأعضاء المعيَّنين — الانتقال إلى "+statusLabel(next)+".");
+    rq.status=next;
+    notifyOwners(rq,"Next production stage is assigned to you.","المرحلة التالية مُسنَدة إليك.");
+  }
+  return true;
+}
 function gmapLink(p){ return "https://www.google.com/maps?q="+p.lat+","+p.lng; }
 /* language-neutral so it can also be stored in the audit trail */
 function fmtDur(ms){
@@ -1012,7 +1411,7 @@ function captureLocation(rq, cb){
 
 /* ---------- change-request diff (before/after audit) ---------- */
 const DIFF_LABEL={title:"f_title",client:"f_client",contact:"f_contact",phone:"f_phone",phone2:"f_phone2",
-  email:"f_email",eventDateTime:"f_event_dt",due:"f_delivery",coverage:"f_coverage",eventType:"f_event_type",
+  email:"f_email",email2:"f_email2",eventDateTime:"f_event_dt",due:"f_delivery",coverage:"f_coverage",eventType:"f_event_type",
   locationText:"f_location",notes:"f_notes",editorial:"f_reporter_q",attachments:"diff_attach_new"};
 function diffFmt(k,v){
   if(k==="coverage") return covLabel(v);
@@ -1027,7 +1426,7 @@ function diffFmt(k,v){
 function computeDiff(rq, fields, flags, files){
   const out=[];
   const eq=(a,b)=>String(a==null?"":a)===String(b==null?"":b);
-  ["title","client","contact","phone","phone2","email","eventDateTime","due","coverage","eventType","locationText","notes"]
+  ["title","client","contact","phone","phone2","email","email2","eventDateTime","due","coverage","eventType","locationText","notes"]
     .forEach(f=>{ if(!eq(rq[f],fields[f])) out.push({k:f,before:rq[f]||"",after:fields[f]||""}); });
   const rolesOf=(rep,jour,heba)=>[rep&&"f_reporter",jour&&"f_journalist",heba&&"f_heba"].filter(Boolean);
   const beforeR=rolesOf(rq.assign.reporterNeeded,rq.assign.journalistNeeded,rq.assign.hebaNeeded);
@@ -1090,6 +1489,14 @@ function notifyReviewers(req,en,ar,stage){
   targets.forEach(uid=>pushNoti(uid,req,en,ar));
 }
 function ownerLabel(req){
+  /* Internal review is owned by two GROUPS, not four individuals — listing every
+     reviewer name here made the "waiting on" line unreadable. Name the group(s). */
+  if(req.status==="internal_review"){
+    const need=[];
+    if(!req.g1) need.push(t("grp1_short"));
+    if(!req.g2) need.push(t("grp2_short"));
+    if(need.length) return need.join(" + ");
+  }
   const ids = ownersOf(req);
   if(ids.length) return ids.map(roleName).join(" / ");
   return (STATUS[req.status].owner||[]).map(k=>ROLE_LABEL[k]?ROLE_LABEL[k][state.lang]:(KIND_LABEL[k]?KIND_LABEL[k][state.lang]:k)).join(" / ")||"—";
@@ -1118,7 +1525,7 @@ function guidanceCard(req, role){
    </div>`;
 }
 function unreadCount(){ const r=myRole(); return state.notifications.filter(n=>n.role===r && !n.read).length; }
-function addTl(req,en,ar,note){ req.timeline.push(tlNote(myRole(),en,ar,note)); }
+function addTl(req,en,ar,note,files){ req.timeline.push(tlNote(myRole(),en,ar,note,files)); }
 function pushNoti(role,req,en,ar){ state.notifications.push(noti(role,req.id,en,ar)); }
 
 /* ============================================================
@@ -1133,8 +1540,9 @@ function render(){
   if(!state.currentUser){ app.innerHTML = viewLogin(); bindLogin(); return; }
   if(state.view==="new"){ app.innerHTML = viewNew(); bindNew(); return; }
   if(state.view==="detail"){ app.innerHTML = viewDetail(); bindDetail(); return; }
-  if(state.view==="archive"){ app.innerHTML = viewList(true); bindList(); return; }
-  app.innerHTML = viewList(false); bindList();
+  /* no separate Archive page — it is a filter on the one queue */
+  if(state.view==="archive"){ state.view="list"; state.filter="archive"; }
+  app.innerHTML = viewList(); bindList();
 }
 
 function langBtn(){ return `<button class="icon-btn lang-btn" id="langBtn" title="Switch language">${state.lang==="en"?"EN":"ع"}</button>`; }
@@ -1166,27 +1574,51 @@ function renderTopbar(){
     `<optgroup label="${esc(t("org_roles"))}">${ROLES.map(opt).join("")}</optgroup>`+
     `<optgroup label="${esc(t("review_panel"))}">${Object.keys(REVIEWERS).map(opt).join("")}</optgroup>`+
     `<optgroup label="${esc(t("team_members"))}">${Object.keys(STAFF).map(opt).join("")}</optgroup>`;
-  const nav = (v,label)=>`<button class="navlink ${state.view===v?"active":""}" data-nav="${v}">${esc(label)}</button>`;
+  /* ERP shell header: brand · 9-dot module switcher · breadcrumb · spacer ·
+     notifications · ع/EN · light/dark · signed-in profile.
+     No permanent sidebar, no page tabs here — navigation labels are pages, and
+     Archive/Cancelled live in the list filters (blueprint §115, §185). */
+  const initials = personName(r).trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("");
   tb.innerHTML =
     `<div class="topbar">
-       <div class="logo"><span class="dot"></span> Al Watan</div>
-       ${nav("list",t("nav_requests"))}
-       ${r==="requester"?nav("new",t("nav_new")):""}
-       ${nav("archive",t("nav_archive"))}
+       <button class="erp-brand" data-home>AL WATAN ERP</button>
+       <div class="dots-wrap">
+         <button class="dots" id="modulesBtn" title="${esc(t("all_modules"))}">
+           <span class="dotgrid">${"<i></i>".repeat(9)}</span>
+           <span class="dots-l">${esc(t("all_modules"))}</span>
+         </button>
+         ${state.modulesOpen?modulesPop():""}
+       </div>
+       <button class="crumb" data-home><span>${esc(t("erp_word"))}</span><span class="sep">/</span><b>${esc(t("module_name"))}</b></button>
        <div class="spacer"></div>
        <div class="bell">
-         <button id="bellBtn">${state.muted?"🔕":"🔔"} ${esc(t("notifications"))}${(!state.muted&&unreadCount())?`<span class="badge">${unreadCount()}</span>`:""}</button>
+         <button class="ic-btn" id="bellBtn" title="${esc(t("notifications"))}">${state.muted?"🔕":"🔔"}${(!state.muted&&unreadCount())?`<span class="badge">${unreadCount()}</span>`:""}</button>
          ${state.notiOpen?notiPop():""}
        </div>
-       <span class="small" style="opacity:.85">${esc(t("you_are"))}:</span>
-       <select id="roleSel" title="${esc(t("switch_user"))}">${roleOpts}</select>
-       ${langBtn()}
-       ${themeBtn()}
-       <button id="logoutBtn">${esc(t("logout"))}</button>
+       <button class="ic-btn lang-sw" id="langBtn" title="Switch language">ع / EN</button>
+       <button class="ic-btn theme-sw" id="themeBtn" title="Light / dark">
+         <span class="sun">☀</span><span class="track"><i></i></span><span class="moon">☾</span>
+       </button>
+       <div class="who">
+         <span class="who-av" style="background:${avatarBg(r)}">${esc(initials)}</span>
+         <span class="who-txt"><b dir="auto">${esc(personName(r))}</b><span dir="auto">${esc(roleSubLabel(r))}</span></span>
+       </div>
+       <button class="ic-btn out-btn" id="logoutBtn" title="${esc(t("logout"))}" aria-label="${esc(t("logout"))}">
+         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+           <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+         </svg>
+       </button>
      </div>`;
-  tb.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{ state.view=b.dataset.nav; state.notiOpen=false; state.editReq=null; state.crEdit=null; save(); render(); });
-  document.getElementById("bellBtn").onclick=()=>{ state.notiOpen=!state.notiOpen; render(); };
-  document.getElementById("roleSel").onchange=e=>{ state.currentUser=e.target.value; state.view="list"; state.notiOpen=false; save(); render(); };
+  /* clicking the ERP mark or the breadcrumb returns to the queue */
+  tb.querySelectorAll("[data-home]").forEach(b=>b.onclick=()=>{
+    state.view="list"; state.notiOpen=false; state.editReq=null; state.crEdit=null; save(); render();
+  });
+  document.getElementById("bellBtn").onclick=()=>{ state.notiOpen=!state.notiOpen; state.modulesOpen=false; render(); };
+  document.getElementById("modulesBtn").onclick=()=>{ state.modulesOpen=!state.modulesOpen; state.notiOpen=false; render(); };
+  /* no production role switcher (blueprint §114) — sign out and back in as another
+     account; the login screen has one-click demo accounts. One click to leave. */
   document.getElementById("logoutBtn").onclick=()=>{ state.currentUser=null; state.view="login"; state.notiOpen=false; save(); render(); };
   bindCommonTop();
   if(state.notiOpen){
@@ -1206,6 +1638,36 @@ function renderTopbar(){
     const mu=document.getElementById("muteBtn");
     if(mu) mu.onclick=()=>{ state.muted=!state.muted; save(); render(); };
   }
+}
+/* The wider نظام الوطن ERP. Only Media Operations is in scope for this task, so
+   every other module is shown but deliberately DISABLED — it proves the module
+   lives inside a bigger ERP without pretending those screens exist. */
+const ERP_MODULES=[
+  {ic:"🏠", en:"Home",            ar:"الرئيسية"},
+  {ic:"📊", en:"Dashboard",       ar:"لوحة المعلومات"},
+  {ic:"📄", en:"Requests",        ar:"الطلبات"},
+  {ic:"🗓️", en:"Calendar",        ar:"التقويم"},
+  {ic:"🎬", en:"Media Operations",ar:"عمليات الإعلام", active:true},
+  {ic:"🎥", en:"Production",      ar:"الإنتاج"},
+  {ic:"🗂️", en:"Digital Assets",  ar:"الأصول الرقمية"},
+  {ic:"✅", en:"Approvals",       ar:"الموافقات"},
+  {ic:"📈", en:"Reports",         ar:"التقارير"},
+  {ic:"👥", en:"Clients (CRM)",   ar:"العملاء"},
+  {ic:"🏢", en:"Vendors",         ar:"المورّدون"},
+  {ic:"⚙️", en:"Settings",        ar:"الإعدادات"},
+];
+function modulesPop(){
+  return `<div class="mod-pop">
+    <div class="mod-h">${esc(t("all_modules"))}</div>
+    <div class="mod-grid">
+      ${ERP_MODULES.map(m=>`
+        <div class="mod-i ${m.active?"on":"off"}" ${m.active?"":`title="${esc(t("mod_soon"))}"`}>
+          <span class="mod-ic">${m.ic}</span>
+          <span dir="auto">${esc(m[state.lang])}</span>
+        </div>`).join("")}
+    </div>
+    <div class="mod-f">${esc(t("mod_note"))}</div>
+  </div>`;
 }
 function notiPop(){
   const r=myRole();
@@ -1289,8 +1751,9 @@ function roleHint(r){
     requester:{en:"Creates & submits requests",ar:"ينشئ الطلبات ويرسلها"},
     marketing:{en:"First approval",ar:"الموافقة الأولى"},
     head:{en:"Final approval · assigns team · routing",ar:"الموافقة النهائية · تعيين الفريق · التوجيه"},
-    journal:{en:"Selects reporters / presenters",ar:"يختار المراسلين / المقدّمين"},
-    team:{en:"Shooting · editing · publishing",ar:"التصوير · المونتاج · النشر"},
+    journal:{en:"Resolves generic editorial roles",ar:"يحسم الأدوار التحريرية العامة"},
+    publisher:{en:"Presses Publish after client approval",ar:"يضغط نشر بعد موافقة العميل"},
+    team:{en:"Shooting · editing",ar:"التصوير · المونتاج"},
     client:{en:"Reviews & approves the final video",ar:"يراجع الفيديو النهائي ويعتمده"},
   }[r]; return h?h[state.lang]:"";
 }
@@ -1323,9 +1786,13 @@ function viewNew(){
   const lbl = (k,req)=>`<label class="f">${esc(t(k))}${req?` <span class="req-star">*</span>`:""}</label>`;
   const attachList = (rq&&rq.attachments&&rq.attachments.length)
      ? `<div class="attach-list">${rq.attachments.map(a=>`<span class="attach-chip">📎 ${esc(a.name)} <span class="muted">${esc(fmtBytes(a.size))}</span></span>`).join("")}</div>` : "";
-  return `<div class="wrap"><div class="card" style="padding:22px 24px">
-    <h1>${esc(changing?t("change_req_h"):(editing?t("edit_h"):t("new_h")))}</h1>
-    <div class="note" style="margin-top:8px">${esc(changing?t("change_req_note"):t("smartform_note"))}</div>
+  /* v7/T2: editing a request that Marketing has NOT approved yet applies in place */
+  const inPlace = !!(editing && rq && rq.status==="marketing_approval");
+  return `<div class="wrap">
+    <button class="btn" id="n_back" style="margin-bottom:14px">${esc(t("back"))}</button>
+    <div class="card" style="padding:22px 24px">
+    <h1>${esc(changing?t("change_req_h"):(inPlace?t("edit_inplace_h"):(editing?t("edit_h"):t("new_h"))))}</h1>
+    <div class="note" style="margin-top:8px">${esc(changing?t("change_req_note"):(inPlace?t("edit_inplace_note"):t("smartform_note")))}</div>
 
     ${lbl("f_select_client",0)}
     <select class="f" id="n_clientPick">
@@ -1345,9 +1812,16 @@ function viewNew(){
         <div id="phone2Wrap" class="${rq&&rq.phone2?"":"hidden"}">${lbl("f_phone2",0)}<input type="tel" id="n_phone2" value="${val("phone2")}" placeholder="${esc(t("f_phone2"))}">
         <div class="small muted" style="margin-top:4px">${esc(t("phone2_hint"))}</div></div>
       </div>
-      <div>${lbl("f_email",0)}<input type="email" id="n_email" value="${val("email")}"></div>
-      <div>${lbl("f_coverage",1)}<select class="f" id="n_coverage">${selOpts(COVERAGE, rq?rq.coverage:"comprehensive")}</select></div>
-      <div>${lbl("f_event_type",1)}<select class="f" id="n_eventType">${selOpts(EVTYPE, rq?rq.eventType:"editorial")}</select></div>
+      <div>${lbl("f_email",0)}<input type="email" id="n_email" value="${val("email")}">
+        <button type="button" class="btn" id="addEmail2" style="margin-top:8px;font-size:12.5px;padding:6px 10px${rq&&rq.email2?";display:none":""}">${esc(t("add_email2"))}</button>
+        <div id="email2Wrap" class="${rq&&rq.email2?"":"hidden"}">${lbl("f_email2",0)}<input type="email" id="n_email2" value="${val("email2")}" placeholder="${esc(t("f_email2"))}">
+        <div class="small muted" style="margin-top:4px">${esc(t("email2_hint"))}</div></div>
+      </div>
+      <!-- v7/T1: per-request fields start EMPTY and are never filled by client selection -->
+      <div>${lbl("f_coverage",1)}<select class="f" id="n_coverage">
+        <option value="">${esc(t("pick_none"))}</option>${selOpts(COVERAGE, rq?rq.coverage:"")}</select></div>
+      <div>${lbl("f_event_type",1)}<select class="f" id="n_eventType">
+        <option value="">${esc(t("pick_none"))}</option>${selOpts(EVTYPE, rq?rq.eventType:"")}</select></div>
       <div>${lbl("f_event_dt",0)}<input type="datetime-local" id="n_eventDateTime" min="${todayISO()}T00:00" value="${val("eventDateTime")}"></div>
       <div>${lbl("f_delivery",1)}<input type="date" id="n_due" min="${todayISO()}" value="${val("due")}"></div>
     </div>
@@ -1385,7 +1859,7 @@ function viewNew(){
       : (editing?`${lbl("edit_note_l",0)}<textarea id="n_note" placeholder="${esc(t("edit_note_l"))}"></textarea>`:"")}
 
     <div class="btnrow" style="margin-top:16px">
-      <button class="btn primary" id="n_submit">${esc(changing?t("submit_change"):(editing?t("save_resubmit"):t("submit_req")))}</button>
+      <button class="btn primary" id="n_submit">${esc(changing?t("submit_change"):(inPlace?t("save_update"):(editing?t("save_resubmit"):t("submit_req"))))}</button>
       <button class="btn" id="n_cancel">${esc(t("cancel"))}</button>
     </div>
     <div id="n_err" class="small" style="color:var(--cancelled);margin-top:8px"></div>
@@ -1447,25 +1921,28 @@ function bindNew(){
     set("n_email",c.email); set("n_locationText",c.location);
     if(c.lat!=null) formSetLocation(c.lat,c.lng);
   };
-  const ap2=document.getElementById("addPhone2");
-  if(ap2) ap2.onclick=()=>{
-    ap2.style.display="none";
-    const w=document.getElementById("phone2Wrap");
-    w.classList.remove("hidden");
-    document.getElementById("n_phone2").focus();
+  const reveal=(btnId,wrapId,inputId)=>{
+    const b=document.getElementById(btnId); if(!b) return;
+    b.onclick=()=>{ b.style.display="none";
+      document.getElementById(wrapId).classList.remove("hidden");
+      document.getElementById(inputId).focus(); };
   };
-  document.getElementById("n_cancel").onclick=()=>{
-    const backTo=state.crEdit;
+  reveal("addPhone2","phone2Wrap","n_phone2");
+  reveal("addEmail2","email2Wrap","n_email2");
+  const leaveForm=()=>{
+    const backTo=state.crEdit||state.editReq;
     state.editReq=null; state.crEdit=null;
     if(backTo){ state.activeReq=backTo; state.view="detail"; } else state.view="list";
     save(); render();
   };
+  document.getElementById("n_cancel").onclick=leaveForm;
+  const nb=document.getElementById("n_back"); if(nb) nb.onclick=leaveForm;
   document.getElementById("n_submit").onclick=async ()=>{
     const g=id=>{const el=document.getElementById(id); return el?el.value.trim():"";};
     const err=document.getElementById("n_err");
     const title=g("n_title"), client=g("n_client"), due=g("n_due");
     const coverage=document.getElementById("n_coverage").value, eventType=document.getElementById("n_eventType").value;
-    const contact=g("n_contact"), phone=g("n_phone"), phone2=g("n_phone2"), email=g("n_email");
+    const contact=g("n_contact"), phone=g("n_phone"), phone2=g("n_phone2"), email=g("n_email"), email2=g("n_email2");
     const eventDateTime=g("n_eventDateTime");
     const eventDate=eventDateTime ? eventDateTime.slice(0,10) : (rqEdit ? rqEdit.eventDate : "");
     const locationText=g("n_locationText"), notes=g("n_notes");
@@ -1473,7 +1950,8 @@ function bindNew(){
     const journalistNeeded=document.getElementById("n_journalist").checked;
     const hebaNeeded=document.getElementById("n_heba").checked;
     const files=await readFiles(document.getElementById("n_attach").files||[]);
-    if(!title||!client||!due){
+    /* v7/T1: coverage + event type are required and are never auto-filled */
+    if(!title||!client||!due||!coverage||!eventType){
       err.textContent = state.lang==="ar"?"الرجاء تعبئة الحقول المطلوبة (*).":"Please fill the required fields (*).";
       return;
     }
@@ -1482,7 +1960,7 @@ function bindNew(){
       err.textContent = state.lang==="ar"?"لا يمكن اختيار تاريخ قبل اليوم.":"Dates cannot be earlier than today.";
       return;
     }
-    const fields={ title,client,contact,phone,phone2,email,eventDate,eventDateTime,coverage,eventType,
+    const fields={ title,client,contact,phone,phone2,email,email2,eventDate,eventDateTime,coverage,eventType,
       due,locationText,locationLat:_formLoc.lat,locationLng:_formLoc.lng,notes };
 
     /* change request on an active request — nothing applies until Marketing approves */
@@ -1502,6 +1980,9 @@ function bindNew(){
 
     if(state.editReq){
       const rq=reqById(state.editReq); const note=g("n_note");
+      /* v7/T2: editing IN PLACE (still in Marketing approval) vs resubmitting after
+         Marketing asked for changes. Both log a diff; only the resubmit re-notifies. */
+      const inPlace = rq.status==="marketing_approval";
       /* capture the before/after diff BEFORE applying, so the audit shows old vs new */
       const diff=computeDiff(rq,fields,{reporterNeeded,journalistNeeded,hebaNeeded},files);
       Object.assign(rq, fields);
@@ -1511,19 +1992,26 @@ function bindNew(){
       rq.assign.hebaNeeded=hebaNeeded;
       if(!reporterNeeded) rq.assign.reporter=null;
       if(!journalistNeeded) rq.assign.journalist=null;
-      if(!hebaNeeded) rq.assign.heba=null;
+      /* v7/T3: named person is assigned/unassigned directly, never via the Editorial Manager */
+      rq.assign.heba = hebaNeeded ? "Heba" : null;
       rq.assign.reporterChosen = needsEditorial(rq) && editorialComplete(rq);
       state.activeReq=rq.id; state.editReq=null;
       rq.timeline.push(Object.assign(
-        tlNote("requester","Edited & resubmitted the request.","تم تعديل الطلب وإعادة إرساله.",note),
+        tlNote("requester",
+          inPlace?"Updated the request (still awaiting Marketing approval).":"Edited & resubmitted the request.",
+          inPlace?"عدّل الطلب (ما زال بانتظار موافقة التسويق).":"تم تعديل الطلب وإعادة إرساله.",
+          note),
         diff.length?{diff}:{}));
       rq.status="marketing_approval";
-      pushNoti("marketing", rq, "A revised request awaits your approval.","طلب مُعدّل بانتظار موافقتك.");
+      pushNoti("marketing", rq,
+        inPlace?"The requester updated a request awaiting your approval.":"A revised request awaits your approval.",
+        inPlace?"عدّل مقدّم الطلب طلبًا بانتظار موافقتك.":"طلب مُعدّل بانتظار موافقتك.");
       state.view="detail"; save(); render(); return;
     }
     const r=Object.assign({ id:state.seq++, requester:"requester", status:"marketing_approval", created:Date.now(),
       attachments:files,
-      assign:{producers:[],shooting:[],editors:[],reporterNeeded,journalistNeeded,hebaNeeded,reporterChosen:false,reporter:null,journalist:null,heba:null},
+      /* v7/T3: a named person is assigned the moment the requester picks them */
+      assign:{producers:[],shooting:[],editors:[],reporterNeeded,journalistNeeded,hebaNeeded,reporterChosen:false,reporter:null,journalist:null,heba:hebaNeeded?"Heba":null},
       g1:false,g2:false,g1By:[],g2By:[],clientLink:null,comments:[],field:{},
       timeline:[tl("requester","Submitted the request.","قدّم الطلب.")] }, fields);
     state.requests.push(r);
@@ -1533,66 +2021,181 @@ function bindNew(){
 }
 
 /* ---------- List ---------- */
+/* Blueprint §303 filter order: All · Needs your action · Awaiting approval ·
+   In production · With client · Archive · Cancelled.
+   Archive and Cancelled are FILTERS, not nav tabs — there is no separate Archive page. */
 const FILTERS = {
-  all:        ()=>true,
+  all:        rq=>!["published","cancelled"].includes(rq.status),
   approvals:  rq=>["marketing_approval","changes_requester","head_approval","changes_marketing","assign_team","journal_selection"].includes(rq.status),
   production: rq=>["in_progress","shooting","editing","internal_review","revision_routing"].includes(rq.status),
   client:     rq=>["client_version","cancellation_request","ready_to_publish"].includes(rq.status),
+  archive:    rq=>rq.status==="published",
+  cancelled:  rq=>rq.status==="cancelled",
 };
-function viewList(archive){
+/* ---------- Upcoming Actions ----------
+   A personal agenda on the queue page: only work THIS user can act on, sorted by
+   urgency. Each row = when · status dot · the action · which request · who owns it.
+   Driven by the same isOwner() rule as the queue, so it can never show work that
+   isn't yours (blueprint: status + assignment, never a generic list). */
+function urgencyOf(rq){
+  const today=todayISO();
+  const d=(rq.due||"").slice(0,10);
+  if(!d) return {k:"none", label:"—", hot:false};
+  if(d<today)  return {k:"overdue",  label:t("overdue"),      hot:true};
+  if(d===today)return {k:"today",    label:t("due_today"),    hot:true};
+  const tm=new Date(Date.now()+86400000).toISOString().slice(0,10);
+  if(d===tm)   return {k:"tomorrow", label:t("due_tomorrow"), hot:true};
+  return {k:"later", label:fmtDay(rq.due), hot:false};
+}
+function upcomingCard(base, r){
+  /* An AGENDA, not a to-do list: every active request this user can see, soonest
+     deadline first. Rows I personally owe an action on are flagged ⚡ and shown in
+     brand red; the rest are visibility ("who has it and when is it due"). `base` is
+     already scoped to the role, so this can never leak other people's work. */
+  const list = base
+    .filter(rq=>!["published","cancelled"].includes(rq.status))
+    .sort((a,b)=>String(a.due||"9999").localeCompare(String(b.due||"9999")))
+    .slice(0,3);   /* top three only — no calendar view in this system */
+  const rows = list.map(rq=>{
+    const u=urgencyOf(rq);
+    const owner=(ownersOf(rq)[0])||r;
+    const ini=personName(owner).trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("");
+    const isMine=isOwner(rq,r)||(r==="marketing"&&rq.changeReq);
+    return `<div class="up-row" data-open="${rq.id}">
+      <div class="up-when ${(u.hot||isMine)?"hot":""}">${esc(u.label)}</div>
+      <span class="up-dot ${STATUS[rq.status].cls}"></span>
+      <div class="up-main">
+        <div class="up-act" dir="auto">${esc(statusLabel(rq.status))}${isMine?` <span class="up-flag">⚡</span>`:""}</div>
+        <div class="up-sub" dir="auto">${esc(rq.title)}</div>
+      </div>
+      <span class="up-av" style="background:${avatarBg(owner)}" title="${esc(personName(owner))}">${esc(ini)}</span>
+    </div>`;
+  }).join("");
+  const mine=list.filter(rq=>isOwner(rq,r)||(r==="marketing"&&rq.changeReq));
+  return `<div class="card upcoming rail-card">
+    <div class="up-head">
+      <div class="up-title">🗓️ ${esc(t("upcoming_h"))}</div>
+    </div>
+    ${rows || `<div class="empty small">${esc(t("upcoming_empty"))}</div>`}
+    ${mine.length?`<button class="up-foot" data-filter="mine">${esc(t("see_all_actions"))} <span class="up-cnt">${mine.length}</span> <span class="up-chev">›</span></button>`:""}
+  </div>`;
+}
+function viewList(){
   const r=myRole();
   let base = state.requests.slice().sort((a,b)=>b.created-a.created);
-  if(archive) base=base.filter(x=>x.status==="published"||x.status==="cancelled");
-  else        base=base.filter(x=>x.status!=="published"&&x.status!=="cancelled");
   // client sees only requests that reached client stage
   if(r==="client") base=base.filter(x=>["client_version","ready_to_publish","published","cancelled"].includes(x.status));
   // staff see only requests they are assigned to
   if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.shooting.includes(r)||x.assign.editors.includes(r)||x.assign.reporter===r||x.assign.journalist===r||x.assign.heba===r);
 
-  // status filter tabs (active list only)
-  let tabsHtml="";
-  if(!archive){
-    const defs=[["all","tab_all"],["mine","tab_mine"],["approvals","tab_approvals"],["production","tab_production"],["client","tab_client"]];
-    const test=k=> k==="mine" ? (rq=>isOwner(rq,r)||(r==="marketing"&&rq.changeReq)) : FILTERS[k];
-    if(!["all","mine","approvals","production","client"].includes(state.filter)) state.filter="all";
-    tabsHtml=`<div class="tabs">`+defs.map(([k,lbl])=>{
-      const c=base.filter(test(k)).length;
-      return `<button class="tab ${state.filter===k?"on":""}" data-filter="${k}">${esc(t(lbl))}<span class="cnt">${c}</span></button>`;
-    }).join("")+`</div>`;
-  }
+  /* one page, one filter row — Archive and Cancelled are filters, never nav tabs */
   const test=k=> k==="mine" ? (rq=>isOwner(rq,r)||(r==="marketing"&&rq.changeReq)) : (FILTERS[k]||FILTERS.all);
-  let rows = archive ? base : base.filter(test(state.filter));
+  const defs=[["all","tab_all"],["mine","tab_mine"],["approvals","tab_approvals"],
+              ["production","tab_production"],["client","tab_client"],
+              ["archive","tab_archive"],["cancelled","tab_cancelled"]];
+  if(!defs.some(([k])=>k===state.filter)) state.filter="all";
+  const tabsHtml=`<div class="tabs">`+defs.map(([k,lbl])=>{
+    const c=base.filter(test(k)).length;
+    return `<button class="tab ${state.filter===k?"on":""}" data-filter="${k}">${esc(t(lbl))}<span class="cnt">${c}</span></button>`;
+  }).join("")+`</div>`;
 
-  const title = archive? t("nav_archive"): t("nav_requests");
+  const rows = base.filter(test(state.filter));
+  const terminal = state.filter==="archive"||state.filter==="cancelled";
+  /* the Requester's page is "My Requests"; everyone else sees their own queue name */
+  const title = r==="requester" ? t("my_requests") : t("nav_requests");
   let body;
   if(!rows.length){
-    body=`<div class="empty">${esc(archive?t("archived_empty"):t("no_requests"))}</div>`;
+    body=`<div class="empty">${esc(terminal?t("archived_empty"):t("no_requests"))}</div>`;
   }else{
     body = rows.map(rq=>{
-      const crFlag = (!archive&&rq.changeReq&&r!=="client") ? `<span class="actionflag">🔁 ${esc(t("cr_flag"))}</span>` : "";
-      const flag = (isOwner(rq,r)||(r==="marketing"&&rq.changeReq&&!archive)) ? `<span class="actionflag">⚡ ${esc(t("action_needed"))}</span>` : "";
-      const quickButtons = !archive&&isOwner(rq,r) ? actionButtons(rq,r).replaceAll("data-act=","data-quick-act=") : "";
+      const isTerm = ["published","cancelled"].includes(rq.status);
+      const crFlag = (!isTerm&&rq.changeReq&&r!=="client") ? `<span class="actionflag">🔁 ${esc(t("cr_flag"))}</span>` : "";
+      const flag = (!isTerm&&(isOwner(rq,r)||(r==="marketing"&&rq.changeReq))) ? `<span class="actionflag">⚡ ${esc(t("action_needed"))}</span>` : "";
+      const quickButtons = !isTerm&&isOwner(rq,r) ? actionButtons(rq,r).replaceAll("data-act=","data-quick-act=") : "";
       const quickActions = quickButtons ? `<div class="quick-actions" data-quick-wrap>${quickButtons}</div>` : "";
+      /* one calm row: identity → status → actions. The ⚡ flag is a small dot on the
+         status chip rather than a second badge, so nothing stacks. */
+      const hot = !!flag;
       return `<div class="reqrow" data-open="${rq.id}">
-        <div class="idcol">${esc(refOf(rq))}</div>
         <div class="main">
+          <div class="rq-top">
+            <span class="idcol">${esc(refOf(rq))}</span>
+            ${hot?`<span class="hotdot" title="${esc(t("action_needed"))}">⚡</span>`:""}
+            ${crFlag}
+          </div>
           <div class="t" dir="auto">${esc(rq.title)}</div>
-          <div class="small muted" dir="auto">${esc(t("client_l"))}: ${esc(rq.client)} · ${esc(covLabel(rq.coverage))} · ${esc(evtypeLabel(rq.eventType))} · ${esc(t("due_l"))}: ${esc(fmtDay(rq.due))}</div>
+          <div class="small muted" dir="auto">${esc(rq.client)} · ${esc(covLabel(rq.coverage))} · ${esc(evtypeLabel(rq.eventType))} · ${esc(t("due_l"))}: ${esc(fmtDay(rq.due))}</div>
         </div>
-        <div style="text-align:end;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-          <span class="st ${STATUS[rq.status].cls}">${esc(statusLabel(rq.status))}</span>
-          ${flag}
-          ${crFlag}
-          ${quickActions}
-        </div>
+        <span class="st ${STATUS[rq.status].cls}">${esc(statusLabel(rq.status))}</span>
+        ${quickActions}
+        <span class="rq-chev">›</span>
       </div>`;
     }).join("");
   }
-  const newBtn = (r==="requester"&&!archive)?`<button class="btn primary" id="listNew">+ ${esc(t("nav_new"))}</button>`:"";
-  return `<div class="wrap">
-    <div class="list-head"><h1 style="margin:0;flex:1">${esc(title)}</h1>${newBtn}</div>
-    ${tabsHtml}
-    <div class="card">${body}</div>
+  const newBtn = (r==="requester")?`<button class="btn primary" id="listNew">+ ${esc(t("nav_new"))}</button>`:"";
+  return `<div class="wrap wide">
+    <div class="list-head">
+      <div style="flex:1">
+        <h1 style="margin:0">${esc(title)}</h1>
+        <div class="small muted">${esc(t("greeting"))}, ${esc(personName(r).split(/\s+/)[0])}</div>
+      </div>
+      ${newBtn}
+    </div>
+    ${statCards(base,r)}
+    <div class="dash">
+      <div class="dash-main">
+        ${tabsHtml}
+        <div class="card">${body}</div>
+      </div>
+      <aside class="dash-rail">
+        ${upcomingCard(base,r)}
+        ${actionQueueCard(base,r)}
+        ${workflowCard(r)}
+      </aside>
+    </div>
+  </div>`;
+}
+/* ---------- dashboard stat cards ---------- */
+function statCards(base,r){
+  const active=base.filter(x=>!["published","cancelled"].includes(x.status));
+  const inProd=base.filter(x=>FILTERS.production(x));
+  const today=todayISO();
+  const wk=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+  const dueWeek=active.filter(x=>x.due && x.due.slice(0,10)>=today && x.due.slice(0,10)<=wk);
+  const done=base.filter(x=>x.status==="published");
+  const card=(icon,cls,label,n)=>`<div class="stat">
+      <span class="stat-ic ${cls}">${icon}</span>
+      <div><div class="stat-l">${esc(label)}</div><div class="stat-n">${n}</div></div>
+    </div>`;
+  return `<div class="stats">
+    ${card("📄","red",  t("stat_total"),   base.length)}
+    ${card("🎬","blue", t("stat_inprog"),  inProd.length)}
+    ${card("🕐","amber",t("stat_dueweek"), dueWeek.length)}
+    ${card("✓", "green",t("stat_done"),    done.length)}
+  </div>`;
+}
+/* ---------- "Your action queue" ---------- */
+function actionQueueCard(base,r){
+  const mine=base.filter(rq=>!["published","cancelled"].includes(rq.status))
+                 .filter(rq=>isOwner(rq,r)||(r==="marketing"&&rq.changeReq));
+  const body = mine.length
+    ? mine.slice(0,4).map(rq=>`<button class="aq-row" data-open="${rq.id}">
+         <span class="aq-dot ${STATUS[rq.status].cls}"></span>
+         <span class="aq-t" dir="auto">${esc(rq.title)}</span>
+         <span class="aq-s">${esc(statusLabel(rq.status))}</span>
+       </button>`).join("")
+    : `<div class="rail-empty">${esc(t("aq_empty"))}</div>`;
+  return `<div class="card rail-card">
+    <div class="rail-h">${esc(t("aq_h"))}${mine.length?`<span class="rail-cnt">${mine.length}</span>`:""}</div>
+    ${body}
+  </div>`;
+}
+/* ---------- role context card ---------- */
+function workflowCard(r){
+  return `<div class="card rail-card">
+    <div class="rail-h">${esc(t("wf_h"))}</div>
+    <div class="wf-role" dir="auto">${esc(personName(r))} · ${esc(roleSubLabel(r))}</div>
+    <div class="wf-sub" dir="auto">${esc(roleHint(r)||t("wf_generic"))}</div>
   </div>`;
 }
 function bindList(){
@@ -1613,8 +2216,9 @@ function runDashboardAction(act,rq){
     r1_ch:"note_t_changes",r2_ch:"note_t_changes",cl_ch:"note_t_changes",cl_final:"note_t_final",
     cl_rej:"note_t_reject",hd_confirm_cancel:"note_t_cancel",route_ip:"note_t_route",route_sh:"note_t_route",route_ed:"note_t_route"};
   const required=["cl_rej","hd_confirm_cancel"];
-  if(act==="re_resubmit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
-  if(noteActions[act]){ askNote(t(noteActions[act]),note=>doAction(act,rq,note),required.includes(act)); return; }
+  if(act==="re_resubmit"||act==="re_edit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
+  if(act==="hd_assign"){ askAssign(rq); return; }
+  if(noteActions[act]){ askNote(t(noteActions[act]),(note,files)=>doAction(act,rq,note,files),required.includes(act)); return; }
   doAction(act,rq);
 }
 
@@ -1687,11 +2291,63 @@ function viewDetail(){
   const comments = clientView ? clientComments(rq) : commentPanel(rq);
   const timeline = clientView ? "" : timelinePanel(rq);
 
-  return `<div class="wrap">
+  /* Two-column detail: the record on the left, the workflow rail on the right.
+     The rail answers "where am I / what happens next / what do I do now" without
+     scrolling, and keeps review + team state visible while reading the record. */
+  return `<div class="wrap wide">
     <button class="btn" id="backBtn" style="margin-bottom:14px">${esc(t("back"))}</button>
-    ${guidanceCard(rq, r)}
-    <div class="card">${summary}${media}${crPanel}${actions}${fieldInfo}${reviewInfo}${comments}${timeline}</div>
-    ${clientView?`<div class="note" style="margin-top:12px">${esc(t("client_only_note"))}</div>`:""}
+    <div class="dash">
+      <div class="dash-main">
+        <div class="card">${summary}${media}${crPanel}${actions}${fieldInfo}${comments}${timeline}</div>
+        ${clientView?`<div class="note" style="margin-top:12px">${esc(t("client_only_note"))}</div>`:""}
+      </div>
+      ${clientView?"":`<aside class="dash-rail">
+        ${guideRail(rq,r)}
+        ${teamRail(rq)}
+        ${reviewInfo}
+      </aside>`}
+    </div>
+  </div>`;
+}
+/* ---------- detail rail: workflow guide ---------- */
+function guideRail(rq,r){
+  const g=STAGE_GUIDE[rq.status]; if(!g) return "";
+  const done=rq.status==="published"||rq.status==="cancelled";
+  const mine=isOwner(rq,r);
+  const step=STATUS[rq.status].step;
+  return `<div class="card rail-card">
+    <div class="rail-h">${esc(t("wf_guide"))}</div>
+    <div class="gr-step">
+      <span class="gr-n on">${step}</span>
+      <div><div class="gr-k">${esc(t("g_here"))}</div>
+        <div class="gr-v" dir="auto">${esc(statusLabel(rq.status))}</div>
+        <div class="gr-s" dir="auto">${esc(g.d[state.lang])}</div></div>
+    </div>
+    ${g.n[state.lang]!=="—"?`<div class="gr-step">
+      <span class="gr-n">${step+1}</span>
+      <div><div class="gr-k">${esc(t("g_next"))}</div>
+        <div class="gr-s" dir="auto">${esc(g.n[state.lang])}</div></div>
+    </div>`:""}
+    ${done?"":`<div class="gr-do ${mine?"you":""}">
+      <div class="gr-k">${esc(t("g_todo"))}</div>
+      <div dir="auto">${mine?esc(g.o[state.lang]):`${esc(t("g_waiting"))}: <b>${esc(ownerLabel(rq))}</b>`}</div>
+    </div>`}
+  </div>`;
+}
+/* ---------- detail rail: assigned team ---------- */
+function teamRail(rq){
+  const a=rq.assign;
+  const line=(label,arr,icon)=>arr.length?`<div class="tr-row">
+      <span class="tr-k">${icon} ${esc(label)}</span>
+      <span class="tr-v" dir="auto">${arr.map((n,i)=>`${arr.length>1?(i+1)+". ":""}${esc(n)}`).join("<br>")}</span>
+    </div>`:"";
+  const ed=[a.reporter,a.journalist,a.heba].filter(Boolean);
+  const body = line(t("shooters"),a.shooting,"📹")+line(t("editors"),a.editors,"✂️")+
+               line(t("editorial_cov"),ed.map(n=>n==="Heba"?t("f_heba"):n),"🎤");
+  if(!body) return "";
+  return `<div class="card rail-card">
+    <div class="rail-h">${esc(t("team_members"))}</div>
+    <div class="tr-body">${body}</div>
   </div>`;
 }
 
@@ -1730,9 +2386,13 @@ function renderActionPanel(rq, r){
   }
   // Revision routing (head)
   else if(r==="head" && s==="revision_routing"){
+    /* "Restart at In progress" only makes sense when the revision came from the
+       CLIENT (re-plan the whole production). A change raised by an internal
+       reviewer is about the material itself → Shooting or Editing only. */
+    const fromReview = rq.revisionSource==="review";
     inner = `<h2>${esc(t("routing_h"))}</h2><div class="note">${esc(t("routing_note"))}</div>
       <div class="btnrow" style="margin-top:12px">
-        <button class="btn blue" data-act="route_ip">${esc(t("restart_ip"))}</button>
+        ${fromReview?"":`<button class="btn blue" data-act="route_ip">${esc(t("restart_ip"))}</button>`}
         <button class="btn blue" data-act="route_sh">${esc(t("restart_sh"))}</button>
         <button class="btn blue" data-act="route_ed">${esc(t("restart_ed"))}</button>
       </div>`;
@@ -1752,19 +2412,36 @@ function actionButtons(rq, r){
   const s=rq.status; const B=[];
   const b=(act,label,cls)=>`<button class="btn ${cls||""}" data-act="${act}">${esc(t(label))}</button>`;
 
+  /* BUG FIX: while a change request is pending Marketing's decision the request is
+     frozen — the brief may still change, so nobody may assign, start work, review,
+     approve or publish against a brief that is about to move. Only Marketing
+     (decide the change) and the Requester (withdraw it) may act. */
+  if(rq.changeReq && r!=="marketing" && r!=="requester") return "";
+
   if(r==="marketing" && s==="marketing_approval"){ B.push(b("mk_approve","approve","good")); B.push(b("mk_changes","request_changes","warn")); }
   if(r==="requester" && s==="changes_requester"){ B.push(b("re_resubmit","resubmit","primary")); }
+  /* v7/T2: the requester may edit their own request IN PLACE while Marketing has not
+     approved yet. It disappears the moment Marketing approves — after that the
+     طلب تعديل change-request flow (v6/T4) owns all changes. Requester-only; the
+     edit is logged on the timeline with a before/after diff. */
+  if(r==="requester" && s==="marketing_approval" && !rq.changeReq && rq.requester===r){
+    B.push(b("re_edit","edit_request","primary"));
+  }
   /* requester may ask to modify a request AFTER Marketing approved it — applies only if Marketing approves the change */
   if(r==="requester" && !rq.changeReq && !["marketing_approval","changes_requester","changes_marketing","cancellation_request","published","cancelled"].includes(s)){
     B.push(b("re_change","req_change","warn"));
   }
   if(r==="head" && s==="head_approval"){ B.push(b("hd_approve","approve","good")); B.push(b("hd_changes","request_changes","warn")); }
+  /* assign opens the same modal from the queue row or the detail page */
+  if(r==="head" && s==="assign_team"){ B.push(b("hd_assign","finalize_team","good")); }
   if(r==="marketing" && s==="changes_marketing"){ B.push(b("mk_forward","forward_head","good")); B.push(b("mk_toreq","send_requester","warn")); }
-  if(isStaff(r) && isOwner(rq,r) && ["in_progress","shooting","editing"].includes(s)){
-    /* field crew: the stage can only be ended after their own start & finish are stamped */
-    B.push(fieldGated(rq,r)
-      ? `<button class="btn primary" disabled>${esc(t("mark_done"))}</button>`
-      : b("tm_done","mark_done","primary"));
+  /* v7/T4: "إنهاء المرحلة" is DELETED from the tracked stages (shooting/editing).
+     There, ⏹ إنهاء العمل both stops tracking and — once the LAST required member has
+     finished — advances the workflow automatically. See finishStageIfDone().
+     in_progress has no per-person tracking, so it keeps one explicit action.
+     ⚠️ OPEN (blueprint §912): Ahmed must confirm who/what closes Preparation. */
+  if(isStaff(r) && isOwner(rq,r) && s==="in_progress"){
+    B.push(b("tm_done","prep_done","primary"));
   }
   /* A reviewer keeps Approve/Request-changes until THEY personally act — even if a
      stage-mate already satisfied the stage — for as long as the request is in review.
@@ -1777,7 +2454,9 @@ function actionButtons(rq, r){
     }
   }
   if(r==="client" && s==="client_version"){ B.push(b("cl_ok","client_approve","good")); B.push(b("cl_ch","client_changes","warn")); B.push(b("cl_rej","client_reject","danger")); }
-  if(isStaff(r) && isOwner(rq,r) && s==="ready_to_publish"){ B.push(b("tm_publish","publish","primary")); }
+  /* v7/T6: only the publisher presses نشر. Publishing just sets the status — it needs
+     no article URL, video link, caption or attachment (working decision 2026-07-21). */
+  if(r==="publisher" && s==="ready_to_publish"){ B.push(b("tm_publish","publish","primary")); }
   if(r==="client" && s==="ready_to_publish"){ B.push(b("cl_final","final_change","warn")); B.push(b("cl_rej","client_reject","danger")); }
   if(r==="head" && s==="cancellation_request"){ B.push(b("hd_confirm_cancel","confirm_cancel","danger")); B.push(b("hd_continue","continue_rout","good")); }
 
@@ -1785,27 +2464,25 @@ function actionButtons(rq, r){
 }
 
 function assignPanel(rq){
-  const editorialNeeded=needsEditorial(rq);
-  const chipSet=(key,list)=>list.map(name=>{
-    const sel=rq.assign[key].includes(name)?"sel":"";
-    return `<span class="chip ${sel}" data-pick="${key}|${esc(name)}">${esc(name)}</span>`;
-  }).join("");
-  const teamsReady = rq.assign.shooting.length && rq.assign.editors.length;
-  const flagged=[rq.assign.reporterNeeded&&("🎤 "+t("f_reporter")), rq.assign.journalistNeeded&&("📰 "+t("f_journalist")), rq.assign.hebaNeeded&&("🎙️ "+t("f_heba"))].filter(Boolean);
+  /* anyEditorial = the requester picked ANY editorial need (named or generic).
+     needsEditorial() is narrower — only unresolved GENERIC roles route onward. */
+  const a=rq.assign;
+  const anyEditorial = !!(a.reporterNeeded || a.journalistNeeded || a.hebaNeeded);
+  /* v7/T3: show each editorial selection with its own resolution state — named vs generic */
+  const flagged=[
+    rq.assign.reporterNeeded   && ("🎤 "+t("f_reporter")+" — "+t("generic_pending")),
+    rq.assign.journalistNeeded && ("📰 "+t("f_journalist")+" — "+t("generic_pending")),
+    rq.assign.hebaNeeded       && ("🎙️ "+t("f_heba")+" — "+t("named_already")),
+  ].filter(Boolean);
+  /* the detail page just launches the modal — same control as the queue row */
   return `<h2>${esc(t("assign_h"))}</h2>
-    <div class="small muted">${esc(t("shooters"))}</div>
-    <div class="chips">${chipSet("shooting",ROSTER.shooting)}</div>
-    <div class="small muted" style="margin-top:12px">${esc(t("editors"))}</div>
-    <div class="chips">${chipSet("editors",ROSTER.editors)}</div>
-    ${editorialNeeded
+    <div class="small muted" style="margin-bottom:12px">${esc(t("asg_sub"))}</div>
+    <div class="btnrow"><button class="btn good" id="assignTeamBtn">${esc(t("finalize_team"))}</button></div>
+    ${anyEditorial
       ? `<div class="small" style="font-weight:700;margin-top:16px" dir="auto">${esc(t("editorial_flagged"))} ${esc(flagged.join(" · "))}</div>
          <div class="note">${esc(t("reporter_rule"))}</div>
          ${editorialStaffParts(rq).length?`<div class="small" style="color:var(--assign);font-weight:700;margin-top:8px">✔ ${esc(t("reporter_chosen"))}: ${esc(editorialStaffParts(rq).join(" · "))}</div>`:""}`
-      : `<div class="small muted" style="margin-top:16px">${esc(t("no_editorial"))}</div>`}
-    <div class="btnrow" style="margin-top:16px">
-      <button class="btn good" id="assignTeamBtn" ${teamsReady?"":"disabled"}>${esc(t("finalize_team"))}</button>
-    </div>
-    ${teamsReady?"":`<div class="small muted" style="margin-top:8px">${esc(t("assign_pick_all"))}</div>`}`;
+      : `<div class="small muted" style="margin-top:16px">${esc(t("no_editorial"))}</div>`}`;
 }
 function journalPanel(rq){
   const repSection = rq.assign.reporterNeeded ? `
@@ -1818,14 +2495,15 @@ function journalPanel(rq){
     <div class="chips" id="jourChips">
       ${ROSTER.journalists.map(n=>`<span class="chip ${rq.assign.journalist===n?"sel":""}" data-jour="${esc(n)}">${esc(n)}</span>`).join("")}
     </div>` : "";
-  const hebaSection = rq.assign.hebaNeeded ? `
-    <div class="small muted" style="margin-top:10px">🎙️ ${esc(t("f_heba"))}</div>
-    <div class="chips" id="hebaChips">
-      ${ROSTER.hebas.map(n=>`<span class="chip ${rq.assign.heba===n?"sel":""}" data-heba="${esc(n)}">${esc(n==="Heba"?t("f_heba"):n)}</span>`).join("")}
+  /* v7/T3: named people are already assigned — the Editorial Manager only resolves
+     the GENERIC roles. He never re-picks (or changes) a named person. */
+  const namedSection = rq.assign.heba ? `
+    <div class="small" style="color:var(--assign);font-weight:700;margin-top:12px" dir="auto">
+      ✔ ${esc(t("already_assigned"))}: ${esc(t("f_heba"))}
     </div>` : "";
   return `<h2>${esc(t("journal_h"))}</h2>
     <div class="small muted">${esc(t("journal_pick"))}</div>
-    ${repSection}${jourSection}${hebaSection}
+    ${repSection}${jourSection}${namedSection}
     <div class="btnrow" style="margin-top:14px">
       <button class="btn good" id="confirmRep" ${editorialComplete(rq)?"":"disabled"}>${esc(t("confirm_reporter"))}</button>
     </div>`;
@@ -1873,7 +2551,8 @@ function fieldPanel(rq, r){
   const rows=members.map(name=>{
     const rec=recs[name]||{};
     const isMe=(name===r);
-    const mine=isMe&&canTrackNow(rq,name);   /* my own stage is the current one */
+    /* frozen while a change request is pending — the brief may still change */
+    const mine=isMe&&canTrackNow(rq,name)&&!rq.changeReq;
     let chip="", btn="";
     if(rec.end){
       chip=`<span class="st done" style="padding:1px 8px">✔ ${esc(t("field_done"))}</span>`;
@@ -1916,17 +2595,24 @@ function reviewPanel(rq){
     /* stage already satisfied but request still in review → the other reviewer MAY still approve */
     const canStill = (ok && pending.length && rq.status==="internal_review")
       ? `<div class="small muted" dir="auto">${pending.map(m=>esc(roleName(m))).join(" · ")} — ${esc(t("may_also_approve"))}</div>` : "";
+    /* lead with the GROUP, then its members underneath — clearer than four titles */
+    const gname = stage==="review1" ? t("grp1_short") : t("grp2_short");
     return `<div style="margin-bottom:12px">
-      <div style="font-weight:700" dir="auto">${esc(t(gl))} ${status}</div>
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <b dir="auto">${esc(gname)}</b>${status}
+      </div>
+      <div class="small muted" dir="auto" style="margin-top:2px">${esc(t(gl).replace(/^.*·\s*/,""))}</div>
       <div class="small muted" dir="auto">${members.map(m=>esc(roleName(m))).join(" · ")}</div>
       ${who}${canStill}
     </div>`;
   };
-  return `<div class="section">
-    <h2>${esc(t("review_groups"))}</h2>
-    ${line("review1",rq.g1,rq.g1By,"g1_l")}
-    ${line("review2",rq.g2,rq.g2By,"g2_l")}
-    <div class="note">${state.lang==="ar"?"يلزم اعتماد واحد من كل مرحلة (يكفي أيّ مراجع في المرحلة). أي طلب تعديل يعيد الطلب إلى المرحلتين معًا.":"One approval is required from each stage (either reviewer in the stage suffices). Any change request returns the request to both stages."}</div>
+  return `<div class="card rail-card">
+    <div class="rail-h">${esc(t("review_groups"))}</div>
+    <div class="tr-body">
+      ${line("review1",rq.g1,rq.g1By,"g1_l")}
+      ${line("review2",rq.g2,rq.g2By,"g2_l")}
+      <div class="small muted" style="margin-top:2px">${state.lang==="ar"?"يلزم اعتماد واحد من كل مرحلة. أي طلب تعديل يُلغي الاعتمادات السابقة.":"One approval per stage. Any requested change clears previous approvals."}</div>
+    </div>
   </div>`;
 }
 function timelinePanel(rq){
@@ -1934,6 +2620,7 @@ function timelinePanel(rq){
     <li><div class="who">${esc(roleName(e.actor))}</div>
         <div dir="auto">${esc(e[state.lang])}</div>
         ${e.note?`<div class="tl-note" dir="auto"><b>${esc(t("note_label"))}:</b> ${esc(e.note)}</div>`:""}
+        ${mediaGrid(e.files,true)}
         ${e.diff&&e.diff.length?diffTable(e.diff):""}
         <div class="tm">${esc(fmtDate(e.time))}</div></li>`).join("");
   return `<div class="section"><h2>${esc(t("timeline_l"))}</h2><ul class="tl">${items}</ul></div>`;
@@ -1976,9 +2663,10 @@ function bindDetail(){
   const REQUIRED=["cl_rej","hd_confirm_cancel"];
   document.querySelectorAll("[data-act]").forEach(el=>el.onclick=()=>{
     const act=el.dataset.act;
-    if(act==="re_resubmit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
+    if(act==="re_resubmit"||act==="re_edit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
+  if(act==="hd_assign"){ askAssign(rq); return; }
     if(act==="re_change"){ state.crEdit=rq.id; state.view="new"; save(); render(); return; }
-    if(NOTE_ACTIONS[act]){ askNote(t(NOTE_ACTIONS[act]), n=>doAction(act,rq,n), REQUIRED.includes(act)); return; }
+    if(NOTE_ACTIONS[act]){ askNote(t(NOTE_ACTIONS[act]), (n,f)=>doAction(act,rq,n,f), REQUIRED.includes(act)); return; }
     doAction(act, rq);
   });
 
@@ -2039,6 +2727,9 @@ function bindDetail(){
         if(!rec.start || rec.end){ save(); render(); return; }
         rec.end=p;
         addTl(rq,"Finished field work.","أنهى العمل الميداني.",where+" · "+fmtDur(rec.end.time-rec.start.time));
+        /* v7/T4: finishing is the ONLY end action — when the last required member
+           on this stage has finished, the workflow advances by itself. */
+        finishStageIfDone(rq);
       }
       save(); render();
     });
@@ -2052,20 +2743,7 @@ function bindDetail(){
     save(); render();
   });
   const ft=document.getElementById("assignTeamBtn");
-  if(ft) ft.onclick=()=>{
-    if(!rq.assign.shooting.length || !rq.assign.editors.length) return;
-    if(needsEditorial(rq) && !editorialComplete(rq)){
-      addTl(rq,"Assigned the production team — editorial staff selection sent to the Editorial Manager (copy to zalmushaigri@alwatannews.net).",
-               "تم تعيين فريق الإنتاج — أُحيل اختيار الطاقم التحريري إلى مسؤول المحررين (نسخة إلى zalmushaigri@alwatannews.net).");
-      rq.status="journal_selection";
-      pushNoti("journal", rq, "A team was assigned — reporter/presenter selection is requested.","تم تعيين الفريق — مطلوب اختيار مراسل/مقدّم.");
-    }else{
-      addTl(rq,"Assigned the team — production started.","تم تعيين الفريق — بدأ الإنتاج.");
-      rq.status="in_progress";
-      notifyOwners(rq,"You've been assigned — your stage (In progress) is ready.","تم تعيينك — مرحلتك (قيد التنفيذ) جاهزة.");
-    }
-    save(); render();
-  };
+  if(ft) ft.onclick=()=>askAssign(rq);
 
   // journal editorial staff pick (one chip list per requested role)
   document.querySelectorAll("[data-rep]").forEach(el=>el.onclick=()=>{
@@ -2074,9 +2752,8 @@ function bindDetail(){
   document.querySelectorAll("[data-jour]").forEach(el=>el.onclick=()=>{
     rq.assign.journalist=el.dataset.jour; save(); render();
   });
-  document.querySelectorAll("[data-heba]").forEach(el=>el.onclick=()=>{
-    rq.assign.heba=el.dataset.heba; save(); render();
-  });
+  /* v7/T3: no picker for named people — they are assigned by the requester, so the
+     Editorial Manager never selects (or re-selects) them. */
   const cr=document.getElementById("confirmRep");
   if(cr) cr.onclick=()=>{
     if(!editorialComplete(rq)) return;
@@ -2103,19 +2780,19 @@ function bindDetail(){
   };
 }
 
-function doAction(act, rq, note){
+function doAction(act, rq, note, files){
   switch(act){
     case "mk_approve":
       addTl(rq,"Approved — moved to Head approval.","موافقة — أُحيل لموافقة الرئيس.");
       rq.status="head_approval"; pushNoti("head",rq,"A request awaits your approval.","طلب بانتظار موافقتك."); break;
     case "mk_changes":
-      addTl(rq,"Requested changes — sent back to Requester.","طلب تعديلات — أُعيد لمقدم الطلب.",note);
+      addTl(rq,"Requested changes — sent back to Requester.","طلب تعديلات — أُعيد لمقدم الطلب.",note,files);
       rq.status="changes_requester"; pushNoti("requester",rq,"Your request needs changes.","طلبك يحتاج إلى تعديلات."); break;
     case "hd_approve":
       addTl(rq,"Approved — moved to Assign team.","موافقة — الانتقال لتعيين الفريق.");
       rq.status="assign_team"; break; // head himself acts next
     case "hd_changes":
-      addTl(rq,"Requested changes — sent to Marketing (comment visible to Requester).","طلب تعديلات — أُرسل للتسويق (التعليق مرئي لمقدم الطلب).",note);
+      addTl(rq,"Requested changes — sent to Marketing (comment visible to Requester).","طلب تعديلات — أُرسل للتسويق (التعليق مرئي لمقدم الطلب).",note,files);
       rq.status="changes_marketing";
       pushNoti("marketing",rq,"Head requested changes.","طلب الرئيس تعديلات.");
       pushNoti("requester",rq,"Head left a change comment on your request.","ترك الرئيس تعليق تعديل على طلبك."); break;
@@ -2123,20 +2800,15 @@ function doAction(act, rq, note){
       addTl(rq,"Fixed & forwarded to Head approval.","تم التعديل والإرسال لموافقة الرئيس.");
       rq.status="head_approval"; pushNoti("head",rq,"A request awaits your approval.","طلب بانتظار موافقتك."); break;
     case "mk_toreq":
-      addTl(rq,"Sent back to Requester.","أُعيد لمقدم الطلب.",note);
+      addTl(rq,"Sent back to Requester.","أُعيد لمقدم الطلب.",note,files);
       rq.status="changes_requester"; pushNoti("requester",rq,"Your request needs changes.","طلبك يحتاج إلى تعديلات."); break;
+    /* v7/T4: only Preparation (in_progress) still has an explicit close action —
+       it has no per-person tracking. Shooting/Editing advance from إنهاء العمل. */
     case "tm_done": {
-      if(fieldGated(rq,myRole())) return;   /* field start & finish must be stamped first */
-      const next =rq.status==="in_progress"?"shooting":(rq.status==="shooting"?"editing":"internal_review");
-      if(next==="internal_review"){
-        rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
-        addTl(rq,"Editing done — sent to internal review (two stages).","انتهى المونتاج — أُرسل للمراجعة الداخلية (مرحلتان).");
-        rq.status="internal_review";
-        notifyReviewers(rq,"A video is awaiting internal review.","فيديو بانتظار المراجعة الداخلية.");
-      }else{
-        addTl(rq,"Stage completed — moved to "+statusLabel(next)+".","اكتملت المرحلة — الانتقال إلى "+statusLabel(next)+".");
-        rq.status=next; notifyOwners(rq,"Next production stage is assigned to you.","المرحلة التالية مُسنَدة إليك.");
-      }
+      if(rq.status!=="in_progress") return;
+      addTl(rq,"Preparation complete — moved to Shooting.","اكتمل التحضير — الانتقال إلى التصوير.");
+      rq.status="shooting";
+      notifyOwners(rq,"Shooting is assigned to you.","التصوير مُسنَد إليك.");
       break; }
     case "r1_ok":
       if(!Array.isArray(rq.g1By)) rq.g1By=[];
@@ -2150,32 +2822,34 @@ function doAction(act, rq, note){
       addTl(rq,"Approved — Editorial & Publishing review (Stage 2).","اعتمد — مراجعة التحرير والنشر (المرحلة ٢)."); checkReviewComplete(rq); break;
     case "r1_ch": case "r2_ch": {
       const stg = act==="r1_ch"?"review1":"review2";
+      rq.revisionSource="review";      /* internal → Shooting/Editing only */
       rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
       addTl(rq,"Requested changes ("+(stg==="review1"?"Direction & Production":"Editorial & Publishing")+") — routed to Production Head.",
-               "طلب تعديلات ("+(stg==="review1"?"الإخراج والإنتاج":"التحرير والنشر")+") — أُحيل لرئيس الإنتاج.",note);
+               "طلب تعديلات ("+(stg==="review1"?"الإخراج والإنتاج":"التحرير والنشر")+") — أُحيل لرئيس الإنتاج.",note,files);
       rq.status="revision_routing"; pushNoti("head",rq,"Internal review requested changes — pick restart stage.","طلبت المراجعة تعديلات — اختر مرحلة الاستئناف."); break; }
     case "route_ip": case "route_sh": case "route_ed": {
       const map={route_ip:"in_progress",route_sh:"shooting",route_ed:"editing"};
       const st=map[act]; rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
-      addTl(rq,"Revision routed — restart at "+statusLabel(st)+".","توجيه التعديل — الاستئناف من "+statusLabel(st)+".",note);
+      addTl(rq,"Revision routed — restart at "+statusLabel(st)+".","توجيه التعديل — الاستئناف من "+statusLabel(st)+".",note,files);
       rq.status=st; notifyOwners(rq,"Revision assigned — please redo your stage.","تم إسناد تعديل — يرجى إعادة مرحلتك."); break; }
     case "cl_ok":
       addTl(rq,"Client approved the video.","اعتمد العميل الفيديو.");
       rq.status="ready_to_publish"; notifyOwners(rq,"Client approved — ready to publish.","اعتمد العميل — جاهز للنشر."); break;
     case "cl_ch":
-      addTl(rq,"Client requested changes — routed to Production Head.","طلب العميل تعديلات — أُحيل لرئيس الإنتاج.",note);
+      rq.revisionSource="client";      /* client → full re-plan allowed */
+      addTl(rq,"Client requested changes — routed to Production Head.","طلب العميل تعديلات — أُحيل لرئيس الإنتاج.",note,files);
       rq.status="revision_routing"; pushNoti("head",rq,"Client requested changes — pick restart stage.","طلب العميل تعديلات — اختر مرحلة الاستئناف."); break;
     case "cl_final":
-      addTl(rq,"Client requested a final change — routed to Production Head.","طلب العميل تعديلًا أخيرًا — أُحيل لرئيس الإنتاج.",note);
+      addTl(rq,"Client requested a final change — routed to Production Head.","طلب العميل تعديلًا أخيرًا — أُحيل لرئيس الإنتاج.",note,files);
       rq.status="revision_routing"; pushNoti("head",rq,"Client requested a final change.","طلب العميل تعديلًا أخيرًا."); break;
     case "cl_rej":
-      addTl(rq,"Client rejected — cancellation request raised.","رفض العميل — رُفع طلب إلغاء.",note);
+      addTl(rq,"Client rejected — cancellation request raised.","رفض العميل — رُفع طلب إلغاء.",note,files);
       rq.status="cancellation_request"; pushNoti("head",rq,"Client raised a cancellation request.","رفع العميل طلب إلغاء."); break;
     case "tm_publish":
       addTl(rq,"Published & archived — point of no return.","تم النشر والأرشفة — نقطة اللاعودة.");
       rq.status="published"; break;
     case "hd_confirm_cancel":
-      addTl(rq,"Cancellation confirmed — task closed (reason recorded).","تم تأكيد الإلغاء — أُغلق الطلب (السبب مسجّل).",note);
+      addTl(rq,"Cancellation confirmed — task closed (reason recorded).","تم تأكيد الإلغاء — أُغلق الطلب (السبب مسجّل).",note,files);
       rq.status="cancelled"; break;
     case "hd_continue":
       addTl(rq,"Cancellation declined — continue to revision routing.","رُفض الإلغاء — المتابعة لتوجيه التعديلات.");
@@ -2192,14 +2866,213 @@ function checkReviewComplete(rq){
   }
 }
 
-/* ---------- note modal (transient, not persisted) ---------- */
+/* applies an assignment and routes onward (shared by the modal and the panel) */
+function finalizeAssign(rq){
+  /* Record the FULL work order — every assigned member, in the sequence the Head
+     chose — as a numbered team timeline in the audit trail. */
+  const seq = (rq.assign.seq && rq.assign.seq.length)
+    ? rq.assign.seq
+    : [...rq.assign.shooting, ...rq.assign.editors];
+  const kindOfName=n=>{
+    const k=STAFF[n];
+    return KIND_LABEL[k] ? KIND_LABEL[k][state.lang] : "";
+  };
+  const orderEn = seq.map((n,i)=>`${i+1}. ${n}`).join("  →  ");
+  const orderAr = seq.map((n,i)=>`${i+1}. ${n} (${kindOfName(n)})`).join("  ←  ");
+  const note = (state.lang==="ar" ? orderAr : orderEn);
+  if(needsEditorial(rq) && !editorialComplete(rq)){
+    addTl(rq,"Assigned the production team — generic editorial roles sent to the Editorial Manager.",
+             "تم تعيين فريق الإنتاج — أُحيلت الأدوار التحريرية العامة إلى مسؤول المحررين.",
+             t("asg_order")+": "+note);
+    rq.status="journal_selection";
+    pushNoti("journal", rq, "A team was assigned — please select the editorial staff.","تم تعيين الفريق — يرجى اختيار الطاقم التحريري.");
+  }else{
+    addTl(rq,"Assigned the team — production started.","تم تعيين الفريق — بدأ الإنتاج.",
+             t("asg_order")+": "+note);
+    rq.status="in_progress";
+    notifyOwners(rq,"You've been assigned — your stage is ready.","تم تعيينك — مرحلتك جاهزة.");
+  }
+  save(); render();
+}
+
+/* ---------- Assign-team modal ----------
+   Opens from the queue row or the detail page, like Request changes — the Head
+   never has to enter the request to assign. Two technical teams only (Shooting,
+   Editing); editorial is read-only here. Once people are picked, the work order
+   is drag-reorderable (with ▲▼ as the required non-drag alternative, blueprint
+   §747). Order = who shoots first, second, … The protected stage order itself
+   (Shooting → Editing → Review) can never be reordered. */
+function askAssign(rq){
+  const draft={shooting:[...rq.assign.shooting], editors:[...rq.assign.editors], seq:[]};
+  let step=1;
+  const ov=document.createElement("div"); ov.className="modal-ov";
+  ov.innerHTML=`<div class="modal modal-lg"><div id="asgBody"></div></div>`;
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  ov.onclick=e=>{ if(e.target===ov) close(); };
+
+  const body=ov.querySelector("#asgBody");
+  let dragFrom=null;
+
+  /* the unified work order: every assigned person in ONE sequence, so the Head
+     decides who actually starts first. Defaults to shooting-then-editing but the
+     Head may reorder freely — that decision is what gets recorded. */
+  function syncSeq(){
+    const picked=[...draft.shooting,...draft.editors];
+    draft.seq=draft.seq.filter(n=>picked.includes(n));
+    picked.forEach(n=>{ if(!draft.seq.includes(n)) draft.seq.push(n); });
+  }
+  function kindLabelOf(n){
+    const k=STAFF[n];
+    return KIND_LABEL[k] ? KIND_LABEL[k][state.lang] : "";
+  }
+  function chips(key,list){
+    return list.map(n=>`<span class="chip ${draft[key].includes(n)?"sel":""}" data-tg="${key}|${esc(n)}">${esc(n)}</span>`).join("");
+  }
+  /* ONE unified sequence across every assigned person — the Head drags to decide
+     who actually starts first (e.g. shooters, then editors). This is the team
+     timeline Ahmed asked for, and it is what gets written to the audit trail. */
+  function orderList(){
+    if(!draft.seq.length) return `<div class="small muted">${esc(t("asg_pick_first"))}</div>`;
+    const ed=[rq.assign.reporter, rq.assign.journalist, rq.assign.heba].filter(Boolean);
+    return `<div class="seq">
+      ${draft.seq.map((n,i)=>`
+        <div class="seq-row" draggable="true" data-i="${i}">
+          <span class="seq-n">${i+1}</span>
+          <span class="seq-grip">⠿</span>
+          <span class="seq-name" dir="auto">${esc(n)}</span>
+          <span class="seq-kind">${esc(kindLabelOf(n))}</span>
+          <span class="seq-btns">
+            <button class="seq-b" data-mv="${i}|-1" ${i===0?"disabled":""}>▲</button>
+            <button class="seq-b" data-mv="${i}|1" ${i===draft.seq.length-1?"disabled":""}>▼</button>
+          </span>
+        </div>`).join("")}
+      ${ed.length?ed.map(n=>`<div class="seq-row static">
+          <span class="seq-n alt">•</span>
+          <span class="seq-name" dir="auto">${esc(n==="Heba"?t("f_heba"):n)}</span>
+          <span class="seq-kind">${esc(t("editorial_cov"))}</span>
+          <span class="small muted">${esc(t("named_already"))}</span>
+        </div>`).join(""):""}
+    </div>`;
+  }
+  /* Horizontal visual timeline of the plan the Head just built — who goes first,
+     second, third, and what stage each of them belongs to. */
+  function timelinePreview(){
+    if(!draft.seq.length) return "";
+    return `<div class="tlp">${draft.seq.map((n,i)=>`
+      <span class="tlp-i">
+        <span class="tlp-av" style="background:${avatarBg(n)}">${esc(n.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join(""))}</span>
+        <span class="tlp-n">${i+1}. ${esc(n)}</span>
+        <span class="tlp-k">${esc(kindLabelOf(n))}</span>
+      </span>`).join(`<span class="tlp-a">›</span>`)}</div>`;
+  }
+  function draw(){
+    syncSeq();
+    const ready=draft.shooting.length&&draft.editors.length;
+    const ed=[rq.assign.reporterNeeded&&("🎤 "+t("f_reporter")+" — "+t("generic_pending")),
+              rq.assign.journalistNeeded&&("📰 "+t("f_journalist")+" — "+t("generic_pending")),
+              rq.assign.hebaNeeded&&("🎙️ "+t("f_heba")+" — "+t("named_already"))].filter(Boolean);
+
+    const stepDef=[[1,t("asg_step1")],[2,t("asg_step2")]];
+    const head=`<div class="modal-h"><h2>${esc(t("assign_h"))}</h2><button class="modal-x" id="asgX">✕</button></div>
+      <div class="wiz">
+        ${stepDef.map(([n,l])=>`<span class="wiz-i">
+           <span class="wiz-s ${step===n?"on":(step>n?"done":"")}">${step>n?"✓":n}</span>
+           <span class="wiz-l ${step===n?"on":""}">${esc(l)}</span>
+         </span>`).join("")}
+      </div>
+      <div class="wiz-bar"><i style="width:${step===1?50:100}%"></i></div>`;
+
+    if(step===1){
+      body.innerHTML=head+`
+        <div class="small muted" style="margin-bottom:14px">${esc(t("asg_sub"))}</div>
+        <div class="fld-l">📹 ${esc(t("shooters"))} <span class="req-star">*</span></div>
+        <div class="chips">${chips("shooting",ROSTER.shooting)}</div>
+        <div class="fld-l" style="margin-top:14px">✂️ ${esc(t("editors"))} <span class="req-star">*</span></div>
+        <div class="chips">${chips("editors",ROSTER.editors)}</div>
+        <div class="fld-l" style="margin-top:16px">📰 ${esc(t("f_reporter_q"))}</div>
+        <div class="small muted" dir="auto">${ed.length?esc(ed.join(" · ")):esc(t("no_editorial"))}</div>
+        <div class="modal-f">
+          <button class="btn" id="asgClose">${esc(t("cancel"))}</button>
+          <button class="btn good" id="asgNext" ${ready?"":"disabled"}>${esc(t("asg_next"))} ›</button>
+        </div>
+        ${ready?"":`<div class="small muted" style="margin-top:8px">${esc(t("assign_pick_all"))}</div>`}`;
+    }else{
+      body.innerHTML=head+`
+        <div class="fld-l">🗓️ ${esc(t("asg_order"))}</div>
+        <div class="small muted" style="margin-bottom:9px">${esc(t("asg_order_hint"))}</div>
+        ${orderList()}
+        <div class="fld-l" style="margin-top:16px">${esc(t("asg_preview"))}</div>
+        ${timelinePreview()}
+        <div class="stagebar">${["shooting","editing","internal_review","client_version","published"]
+          .map(s=>`<span class="sb-i"><i class="sb-d ${STATUS[s].cls}"></i>${esc(statusLabel(s))}</span>`)
+          .join(`<span class="sb-a">›</span>`)}</div>
+        <div class="small muted" style="margin-top:5px">${esc(t("asg_locked"))}</div>
+        <div class="modal-f">
+          <button class="btn" id="asgBack">‹ ${esc(t("asg_back"))}</button>
+          <button class="btn good" id="asgOk">${esc(t("finalize_team"))}</button>
+        </div>`;
+    }
+    bind();
+  }
+  function bind(){
+    body.querySelectorAll("[data-tg]").forEach(el=>el.onclick=()=>{
+      const [k,n]=el.dataset.tg.split("|");
+      const i=draft[k].indexOf(n);
+      if(i>=0) draft[k].splice(i,1); else draft[k].push(n);
+      draw();
+    });
+    body.querySelectorAll("[data-mv]").forEach(el=>el.onclick=()=>{
+      const [iS,dS]=el.dataset.mv.split("|");
+      const i=+iS, j=i+ +dS;
+      if(j<0||j>=draft.seq.length) return;
+      [draft.seq[i],draft.seq[j]]=[draft.seq[j],draft.seq[i]];
+      draw();
+    });
+    body.querySelectorAll(".seq-row[data-i]").forEach(el=>{
+      el.ondragstart=()=>{ dragFrom=+el.dataset.i; el.classList.add("dragging"); };
+      el.ondragend  =()=>{ el.classList.remove("dragging"); };
+      el.ondragover =e=>{ e.preventDefault(); el.classList.add("over"); };
+      el.ondragleave=()=>el.classList.remove("over");
+      el.ondrop     =e=>{ e.preventDefault();
+        const to=+el.dataset.i;
+        if(dragFrom!=null&&dragFrom!==to){
+          const [m]=draft.seq.splice(dragFrom,1);
+          draft.seq.splice(to,0,m);
+        }
+        dragFrom=null; draw();
+      };
+    });
+    const x=body.querySelector("#asgX"); if(x) x.onclick=close;
+    const c=body.querySelector("#asgClose"); if(c) c.onclick=close;
+    const nx=body.querySelector("#asgNext"); if(nx) nx.onclick=()=>{ step=2; draw(); };
+    const bk=body.querySelector("#asgBack"); if(bk) bk.onclick=()=>{ step=1; draw(); };
+    const ok=body.querySelector("#asgOk");
+    if(ok) ok.onclick=()=>{
+      if(!draft.shooting.length||!draft.editors.length) return;
+      /* keep each team list ordered by the unified sequence the Head chose */
+      rq.assign.shooting=draft.seq.filter(n=>draft.shooting.includes(n));
+      rq.assign.editors =draft.seq.filter(n=>draft.editors.includes(n));
+      rq.assign.seq     =[...draft.seq];
+      close();
+      finalizeAssign(rq);
+    };
+  }
+  draw();
+}
+
+/* ---------- note modal ----------
+   Carries an optional file: a "request changes" note is often a screenshot or an
+   annotated cut, so the reason and its evidence stay together in the audit. */
 function askNote(titleText, cb, required){
   const ov=document.createElement("div"); ov.className="modal-ov";
   ov.innerHTML=`<div class="modal">
-    <h2 style="margin-bottom:6px">${esc(titleText)}</h2>
+    <div class="modal-h"><h2>${esc(titleText)}</h2><button class="modal-x" id="noteX">✕</button></div>
     <div class="small muted" style="margin-bottom:8px">${esc(t("note_change"))}</div>
     <textarea id="noteTA" placeholder="${esc(t("filled_by_role"))}"></textarea>
-    <div class="btnrow" style="justify-content:flex-end;margin-top:12px">
+    <div class="small muted" style="margin:10px 0 4px">${esc(t("note_attach"))}</div>
+    <input type="file" id="noteFiles" multiple>
+    <div class="modal-f">
       <button class="btn" id="noteCancel">${esc(t("cancel"))}</button>
       <button class="btn primary" id="noteOk">${esc(t("ok"))}</button>
     </div></div>`;
@@ -2207,11 +3080,13 @@ function askNote(titleText, cb, required){
   const ta=ov.querySelector("#noteTA"); ta.focus();
   const close=()=>ov.remove();
   ov.addEventListener("click",e=>{ if(e.target===ov) close(); });
+  ov.querySelector("#noteX").onclick=close;
   ov.querySelector("#noteCancel").onclick=close;
-  ov.querySelector("#noteOk").onclick=()=>{
+  ov.querySelector("#noteOk").onclick=async ()=>{
     const v=ta.value.trim();
     if(required && !v){ ta.style.borderColor="var(--cancelled)"; ta.focus(); return; }
-    close(); cb(v);
+    const files=await readFiles(ov.querySelector("#noteFiles").files||[]);
+    close(); cb(v, files);
   };
 }
 
