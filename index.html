@@ -33,8 +33,14 @@
   .topbar{position:sticky;top:0;z-index:40;background:var(--panel);color:var(--ink);
     display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:nowrap;
     border-bottom:1px solid var(--line);box-shadow:0 1px 2px rgba(20,20,25,.04)}
+  /* icons never shrink; text blocks shrink and ellipsis instead of clipping */
   .topbar>*{flex:0 0 auto}
   .topbar .spacer{flex:1 1 auto;min-width:0}
+  .erp-brand,.crumb,.who-txt{min-width:0;overflow:hidden}
+  .erp-brand{flex:0 1 auto;white-space:nowrap;text-overflow:ellipsis}
+  .crumb{flex:0 1 auto}
+  .crumb b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .who-txt b,.who-txt span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lang-sw{white-space:nowrap}
   .erp-brand{font-weight:800;font-size:15px;letter-spacing:.6px;color:var(--brand);white-space:nowrap;
     background:transparent;border:0;padding:4px 2px}
@@ -46,8 +52,9 @@
   .dotgrid i{width:3px;height:3px;border-radius:50%;background:currentColor;display:block}
   .dots-l{font-size:9px;letter-spacing:.2px;white-space:nowrap}
   .dots-wrap{position:relative;display:flex}
-  .mod-pop{position:absolute;inset-inline-start:0;top:44px;width:330px;background:var(--panel);
-    border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(16,24,40,.22);z-index:60}
+  .mod-pop{position:absolute;inset-inline-start:0;top:44px;width:330px;max-width:calc(100vw - 24px);
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 8px 24px rgba(16,24,40,.22);z-index:60}
   .mod-h{padding:11px 14px 8px;font-weight:700;font-size:12px;text-transform:uppercase;
     letter-spacing:.4px;color:var(--muted)}
   .mod-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:0 8px 8px}
@@ -93,8 +100,10 @@
     border-radius:20px;min-width:16px;height:16px;padding:0 4px;font-size:10px;
     display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)}
   /* login screen keeps a simple brand row */
-  .topbar .logo{font-weight:800;font-size:15px;letter-spacing:.4px;display:flex;align-items:center;gap:8px;color:var(--brand)}
-  .topbar .logo .dot{width:9px;height:9px;border-radius:50%;background:var(--brand);display:inline-block}
+  .topbar .logo{font-weight:800;font-size:15px;letter-spacing:.4px;display:flex;align-items:center;
+    gap:8px;color:var(--brand);min-width:0;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .logo .dot{width:9px;height:9px;border-radius:50%;background:var(--brand);display:inline-block;flex:none}
+  .logo-sub{opacity:.8;font-weight:600;overflow:hidden;text-overflow:ellipsis}
   .topbar select option{background:var(--panel);color:var(--ink)}
   .topbar .bell{position:relative;display:flex}
   #resetBtn{background:var(--panel);color:var(--muted);border:1px solid var(--line);padding:6px 11px;border-radius:8px;font-size:12.5px}
@@ -560,13 +569,18 @@
   }
   @media(max-width:640px){
     .topbar{gap:5px;padding:7px 10px}
-    .dots{display:none}
+    /* the module switcher STAYS on mobile — it is how you prove the shared ERP */
+    .dots{padding:2px 3px}
     .who{padding-inline-start:5px;border-inline-start:0}
     .who-txt{display:none}                       /* avatar only */
     .crumb b{font-size:12.5px}
     .lang-sw{font-size:11px;padding:6px 4px}
     .ic-btn{padding:6px 4px}
     .who-av{width:28px;height:28px;font-size:11px}
+  }
+  @media(max-width:640px){
+    .logo-sub{display:none}                      /* login header: brand only */
+    #resetBtn{padding:6px 8px;font-size:11.5px}
   }
   @media(max-width:520px){
     .crumb{display:none}                         /* page title already says where you are */
@@ -578,6 +592,17 @@
   @media(max-width:360px){
     .erp-brand{font-size:0;padding:0}            /* mark only, keeps the anchor */
     .erp-brand::before{content:"AW";font-size:13px;font-weight:800;letter-spacing:.5px}
+  }
+  /* both header popups become viewport-pinned sheets on a phone, so they can never
+     hang off the edge when their trigger sits near the start of the bar */
+  @media(max-width:720px){
+    .mod-pop{position:fixed;inset-inline:12px;top:58px;width:auto;max-width:none;
+      max-height:calc(100dvh - 74px);overflow-y:auto}
+    .mod-grid{grid-template-columns:1fr 1fr}
+    .mod-i{padding:11px 10px}                    /* comfortable tap target */
+  }
+  @media(max-width:380px){
+    .mod-grid{grid-template-columns:1fr}
   }
 
   /* ===== responsive dashboard =====
@@ -1614,7 +1639,7 @@ function renderTopbar(){
   if(!state.currentUser){
     tb.innerHTML =
       `<div class="topbar">
-        <div class="logo"><span class="dot"></span> Al Watan · <span style="opacity:.8">${esc(t("app_title"))}</span></div>
+        <div class="logo"><span class="dot"></span> Al Watan <span class="logo-sub">· ${esc(t("app_title"))}</span></div>
         <div class="spacer"></div>
         ${langBtn()}
         ${themeBtn()}
