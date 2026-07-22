@@ -40,7 +40,32 @@ spacer · notifications · `ع / EN` · light/dark switch · profile · logout i
 | **T2** | `تعديل الطلب` for the requester while status is `marketing_approval`; disappears once Marketing approves. Reuses the existing edit path so the before/after diff is logged automatically. Separate heading, button label and notification distinguish it from resubmit-after-changes. |
 | **T3** | `needsEditorial()` no longer counts `hebaNeeded` — that was why a named person still routed to the Editorial Manager. Named people are assigned on submit; the Editorial Manager panel shows them as already assigned with no picker. **Mixed rule works**: Heba + generic journalist → still routes for the journalist, Heba never re-picked. |
 | **T4** | `إنهاء المرحلة` deleted from Shooting/Editing. `finishStageIfDone()` advances when the **last** assigned member stamps `إنهاء العمل`. Preparation keeps one explicit action — see OPEN below. |
-| **T6** | `ready_to_publish` owner moved off `["editor","client"]` to `["publisher"]`. Client keeps read-only visibility + the one final-change round but owes no action. Dropped the "set caption/channel" guidance that contradicted the no-URL decision. |
+| **T6** | `ready_to_publish` owner moved off `["editor","client"]` to `["publisher"]`. Dropped the "set caption/channel" guidance that contradicted the no-URL decision. **Revised 2026-07-22: approval is a clean handover — see below.** |
+
+### T6 revision — the client's queue empties on approval (2026-07-22)
+
+⚠️ **This supersedes the earlier "one final-change round from Ready to Publish"
+decision** (recorded as user-confirmed) and blueprint §1160, which kept a secondary
+client window open after approval.
+
+The client's *only* decision point is **نسخة العميل**. There they may approve, request
+changes, or reject. The moment they approve:
+
+- status → `ready_to_publish` and the request **disappears from the client's list**
+  (`ready_to_publish` is deliberately absent from the client's visible statuses);
+- the client has **no action anywhere** on it;
+- it lands with the publisher, who gets the ⚡ flag and the Publish action;
+- after publish it reappears for the client under **Archive**, read-only.
+
+Cancellation and change requests must therefore happen **before** approval.
+
+Two implementation notes worth keeping:
+
+- The access guard runs in `render()` **before** it dispatches to the detail view, not
+  inside `viewDetail()`. Returning different HTML from `viewDetail()` still left
+  `bindDetail()` wiring up controls that no longer existed, which threw.
+- `doAction`'s `cl_final` branch is now **unreachable** and is kept only in case Ahmed
+  reinstates the one-round window. It is commented as such.
 
 ## 4. Dashboard
 

@@ -1620,6 +1620,14 @@ function render(){
   const app = document.getElementById("app");
   if(!state.currentUser){ app.innerHTML = viewLogin(); bindLogin(); return; }
   if(state.view==="new"){ app.innerHTML = viewNew(); bindNew(); return; }
+  /* v7/T6 access guard — must run BEFORE dispatch, not inside viewDetail:
+     swapping the HTML there would still leave bindDetail() looking for controls
+     that no longer exist. Once the client approves, the request belongs to the
+     publisher and the client is bounced back to their own queue. */
+  if(state.view==="detail"){
+    const _rq=reqById(state.activeReq);
+    if(_rq && myRole()==="client" && _rq.status==="ready_to_publish"){ state.view="list"; }
+  }
   if(state.view==="detail"){ app.innerHTML = viewDetail(); bindDetail(); return; }
   /* no separate Archive page — it is a filter on the one queue */
   if(state.view==="archive"){ state.view="list"; state.filter="archive"; }
@@ -2165,7 +2173,10 @@ function viewList(){
   const r=myRole();
   let base = state.requests.slice().sort((a,b)=>b.created-a.created);
   // client sees only requests that reached client stage
-  if(r==="client") base=base.filter(x=>["client_version","ready_to_publish","published","cancelled"].includes(x.status));
+  /* v7/T6: once the client approves, the request hands over to the publisher and
+     LEAVES the client's queue — ready_to_publish is deliberately not listed here.
+     The client keeps published/cancelled as read-only history. */
+  if(r==="client") base=base.filter(x=>["client_version","published","cancelled"].includes(x.status));
   // staff see only requests they are assigned to
   if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.shooting.includes(r)||x.assign.editors.includes(r)||x.assign.reporter===r||x.assign.journalist===r||x.assign.heba===r);
 
@@ -2534,11 +2545,14 @@ function actionButtons(rq, r){
       B.push(b(st==="review1"?"r1_ch":"r2_ch", "request_changes", "warn"));
     }
   }
+  /* The client's ONLY decision point is نسخة العميل: approve, request changes, or
+     reject. Cancelling and change-requests must happen BEFORE approval. */
   if(r==="client" && s==="client_version"){ B.push(b("cl_ok","client_approve","good")); B.push(b("cl_ch","client_changes","warn")); B.push(b("cl_rej","client_reject","danger")); }
   /* v7/T6: only the publisher presses نشر. Publishing just sets the status — it needs
-     no article URL, video link, caption or attachment (working decision 2026-07-21). */
+     no article URL, video link, caption or attachment (working decision 2026-07-21).
+     The client has NO action here: approving hands the request over, and it leaves
+     their queue entirely (see viewList — ready_to_publish is not client-visible). */
   if(r==="publisher" && s==="ready_to_publish"){ B.push(b("tm_publish","publish","primary")); }
-  if(r==="client" && s==="ready_to_publish"){ B.push(b("cl_final","final_change","warn")); B.push(b("cl_rej","client_reject","danger")); }
   if(r==="head" && s==="cancellation_request"){ B.push(b("hd_confirm_cancel","confirm_cancel","danger")); B.push(b("hd_continue","continue_rout","good")); }
 
   return B.join("");
@@ -2920,6 +2934,10 @@ function doAction(act, rq, note, files){
       rq.revisionSource="client";      /* client → full re-plan allowed */
       addTl(rq,"Client requested changes — routed to Production Head.","طلب العميل تعديلات — أُحيل لرئيس الإنتاج.",note,files);
       rq.status="revision_routing"; pushNoti("head",rq,"Client requested changes — pick restart stage.","طلب العميل تعديلات — اختر مرحلة الاستئناف."); break;
+    /* UNREACHABLE under the current rule: the client has no action at
+       ready_to_publish any more (2026-07-22 — approval hands over to the
+       publisher and the request leaves the client's queue). Kept only in case
+       Ahmed reinstates the agreed one-round final-change window. */
     case "cl_final":
       addTl(rq,"Client requested a final change — routed to Production Head.","طلب العميل تعديلًا أخيرًا — أُحيل لرئيس الإنتاج.",note,files);
       rq.status="revision_routing"; pushNoti("head",rq,"Client requested a final change.","طلب العميل تعديلًا أخيرًا."); break;
