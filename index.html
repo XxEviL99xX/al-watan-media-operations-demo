@@ -274,9 +274,9 @@
   .empty{padding:30px;text-align:center;color:var(--muted)}
 
   /* toasts — transient confirmations, bottom of the screen, auto-dismiss */
-  .toast-wrap{position:fixed;inset-block-end:18px;left:50%;transform:translateX(-50%);
-    z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;
-    width:max-content;max-width:92vw}
+  /* full-width row centered by flex — no translateX, so it can never drift in RTL */
+  .toast-wrap{position:fixed;inset-block-end:18px;left:0;right:0;
+    z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
   .toast{pointer-events:auto;display:flex;align-items:center;gap:9px;background:var(--panel);color:var(--ink);
     border:1px solid var(--line);border-inline-start:4px solid var(--brand);border-radius:10px;
     padding:10px 14px;font-size:13.5px;box-shadow:0 8px 24px rgba(16,24,40,.22);
@@ -1146,7 +1146,7 @@ const STAGE_GUIDE = {
   in_progress:{
     d:{en:"Preparation & planning by the assigned shooting team.",ar:"التحضير والتخطيط بواسطة فريق التصوير المعيَّن."},
     n:{en:"Next stage → Shooting (التصوير).",ar:"المرحلة التالية ← التصوير."},
-    o:{en:"Press ▶ Start work to begin — it moves the request to Shooting.",ar:"اضغط ▶ بدء العمل للانطلاق — يَنقل الطلب إلى التصوير."}},
+    o:{en:"Press ▶ Start work once — it moves the request to Shooting and logs your start location.",ar:"اضغط ▶ بدء العمل مرة واحدة — يَنقل الطلب إلى التصوير ويُسجّل موقع بدايتك."}},
   shooting:{
     d:{en:"Filming on location — Shooting (التصوير).",ar:"التصوير في الموقع."},
     n:{en:"Next stage → Editing (المونتاج).",ar:"المرحلة التالية ← المونتاج."},
@@ -2362,6 +2362,7 @@ function runDashboardAction(act,rq){
   const required=["cl_rej","hd_confirm_cancel"];
   if(act==="re_resubmit"||act==="re_edit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
   if(act==="hd_assign"){ askAssign(rq); return; }
+  if(act==="tm_done"){ startPreparation(rq); return; }   /* one click: advance + start tracking */
   if(noteActions[act]){ askNote(t(noteActions[act]),(note,files)=>doAction(act,rq,note,files),required.includes(act)); return; }
   doAction(act,rq);
 }
@@ -2812,6 +2813,7 @@ function bindDetail(){
     const act=el.dataset.act;
     if(act==="re_resubmit"||act==="re_edit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
   if(act==="hd_assign"){ askAssign(rq); return; }
+    if(act==="tm_done"){ startPreparation(rq); return; }   /* one click: advance + start tracking */
     if(act==="re_change"){ state.crEdit=rq.id; state.view="new"; save(); render(); return; }
     if(NOTE_ACTIONS[act]){ askNote(t(NOTE_ACTIONS[act]), (n,f)=>doAction(act,rq,n,f), REQUIRED.includes(act)); return; }
     doAction(act, rq);
@@ -2934,6 +2936,30 @@ function bindDetail(){
   };
 }
 
+/* v7/T4 (2026-07-23): ONE click. In Preparation ▶ بدء العمل advances the request to
+   Shooting AND stamps the starter's location, so tracking begins in the same action —
+   no second "start tracking" click. The other assigned members still stamp their own
+   start when they act in Shooting. Location capture is async (permission prompt), so
+   we render immediately (status shows Shooting) then again once the stamp lands. */
+function startPreparation(rq){
+  if(!rq || rq.status!=="in_progress") return;
+  const me=myRole();
+  rq.status="shooting";
+  addTl(rq,"Work started — moved to Shooting.","بدأ العمل — الانتقال إلى التصوير.");
+  notifyOwners(rq,"Shooting is assigned to you.","التصوير مُسنَد إليك.");
+  save(); render();
+  captureLocation(rq, p=>{
+    rq.field=rq.field||{};
+    const rec=rq.field[me]||(rq.field[me]={});
+    if(!rec.start){
+      rec.start=p;
+      const where=`📍 ${p.lat}, ${p.lng}${p.sim?" · simulated / تجريبي":""}`;
+      addTl(rq,"Started field work.","بدأ العمل الميداني.",where);
+    }
+    toast(state.lang==="ar"?"بدأ العمل وسُجّل الموقع":"Work started — location logged","good");
+    save(); render();
+  });
+}
 function doAction(act, rq, note, files){
   switch(act){
     case "mk_approve":
@@ -2956,14 +2982,9 @@ function doAction(act, rq, note, files){
     case "mk_toreq":
       addTl(rq,"Sent back to Requester.","أُعيد لمقدم الطلب.",note,files);
       rq.status="changes_requester"; pushNoti("requester",rq,"Your request needs changes.","طلبك يحتاج إلى تعديلات."); break;
-    /* v7/T4: only Preparation (in_progress) still has an explicit close action —
-       it has no per-person tracking. Shooting/Editing advance from إنهاء العمل. */
-    case "tm_done": {
-      if(rq.status!=="in_progress") return;
-      addTl(rq,"Work started — moved to Shooting.","بدأ العمل — الانتقال إلى التصوير.");
-      rq.status="shooting";
-      notifyOwners(rq,"Shooting is assigned to you.","التصوير مُسنَد إليك.");
-      break; }
+    /* tm_done (Preparation ▶ بدء العمل) is intercepted BEFORE doAction in both
+       dispatchers → startPreparation(), so one click advances AND starts tracking.
+       No case here on purpose. */
     case "r1_ok":
       if(!Array.isArray(rq.g1By)) rq.g1By=[];
       if(!rq.g1By.includes(myRole())) rq.g1By.push(myRole());
@@ -3024,7 +3045,6 @@ const ACTION_TOASTS={
   hd_changes:["Changes requested","طُلبت تعديلات","warn"],
   mk_forward:["Forwarded to Head","أُحيل للرئيس","good"],
   mk_toreq:["Sent back to requester","أُعيد لمقدّم الطلب","warn"],
-  tm_done:["Work started — now in Shooting","بدأ العمل — انتقل للتصوير","good"],
   r1_ok:["Review approved","اعتُمدت المراجعة","good"],
   r2_ok:["Review approved","اعتُمدت المراجعة","good"],
   r1_ch:["Changes requested","طُلبت تعديلات","warn"],
