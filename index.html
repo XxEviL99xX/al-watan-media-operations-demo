@@ -1714,6 +1714,23 @@ function renderTopbar(){
      account; the login screen has one-click demo accounts. One click to leave. */
   document.getElementById("logoutBtn").onclick=()=>{ state.currentUser=null; state.view="login"; state.notiOpen=false; save(); render(); };
   bindCommonTop();
+  /* Dismiss the module switcher / notifications when clicking anywhere outside them
+     (or on Escape) — bound once at document level so it survives re-renders. The
+     triggers live inside .dots-wrap / .bell, so a click there is ignored here and the
+     button's own toggle handles it. */
+  if(!window.__erpDismissBound){
+    window.__erpDismissBound=true;
+    document.addEventListener("click",(e)=>{
+      if(!state.modulesOpen && !state.notiOpen) return;
+      if(e.target.closest && (e.target.closest(".dots-wrap") || e.target.closest(".bell"))) return;
+      state.modulesOpen=false; state.notiOpen=false; render();
+    });
+    document.addEventListener("keydown",(e)=>{
+      if(e.key==="Escape" && (state.modulesOpen || state.notiOpen)){
+        state.modulesOpen=false; state.notiOpen=false; render();
+      }
+    });
+  }
   if(state.notiOpen){
     tb.querySelectorAll("[data-noti]").forEach(el=>el.onclick=()=>{
       const n=state.notifications.find(x=>x.id===el.dataset.noti); if(n){ n.read=true; state.activeReq=n.reqId; state.view="detail"; }
