@@ -29,9 +29,12 @@
   .hidden{display:none!important}
 
   /* ===== ERP shell header (white, compact, brand mark + module switcher) ===== */
+  /* NEVER wraps — a wrapped ERP header looks broken. Items shrink instead. */
   .topbar{position:sticky;top:0;z-index:40;background:var(--panel);color:var(--ink);
-    display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap;
+    display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:nowrap;
     border-bottom:1px solid var(--line);box-shadow:0 1px 2px rgba(20,20,25,.04)}
+  .topbar>*{flex:0 0 auto}
+  .topbar .spacer{flex:1 1 auto;min-width:0}
   .lang-sw{white-space:nowrap}
   .erp-brand{font-weight:800;font-size:15px;letter-spacing:.6px;color:var(--brand);white-space:nowrap;
     background:transparent;border:0;padding:4px 2px}
@@ -468,9 +471,12 @@
   .seq-row.static{cursor:default;opacity:.85}
   .seq-n.alt{background:var(--line);color:var(--muted)}
   .seq-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);
-    border-radius:9px;background:var(--bg);cursor:grab}
-  .seq-row.dragging{opacity:.45}
-  .seq-row.over{border-color:var(--brand);box-shadow:0 0 0 2px var(--red-050,#fdecec)}
+    border-radius:9px;background:var(--bg)}
+  .seq-row.dragging{opacity:.6;border-color:var(--brand);box-shadow:0 4px 14px rgba(20,20,25,.18)}
+  /* the grip is the drag handle — touch-action:none stops the phone scrolling instead */
+  .seq-grip{cursor:grab;touch-action:none;padding:6px 4px;margin:-6px -2px;
+    min-width:24px;text-align:center;user-select:none}
+  .seq-grip:active{cursor:grabbing}
   .seq-n{width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;
     font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
   .seq-grip{color:var(--muted);font-size:13px}
@@ -553,17 +559,25 @@
     .erp-brand{font-size:13px;letter-spacing:.3px}
   }
   @media(max-width:640px){
-    .topbar{gap:6px;padding:7px 10px}
+    .topbar{gap:5px;padding:7px 10px}
     .dots{display:none}
-    .who{padding-inline-start:6px;border-inline-start:0}
+    .who{padding-inline-start:5px;border-inline-start:0}
     .who-txt{display:none}                       /* avatar only */
     .crumb b{font-size:12.5px}
-    .lang-sw{font-size:11px;padding:6px 5px}
-    .ic-btn{padding:6px 5px}
+    .lang-sw{font-size:11px;padding:6px 4px}
+    .ic-btn{padding:6px 4px}
+    .who-av{width:28px;height:28px;font-size:11px}
   }
-  @media(max-width:430px){
+  @media(max-width:520px){
     .crumb{display:none}                         /* page title already says where you are */
-    .erp-brand{font-size:12px}
+    .erp-brand{font-size:12px;letter-spacing:.2px}
+    .theme-sw .track{width:26px;height:14px}
+    .theme-sw .track i{width:10px;height:10px}
+    :root[data-theme="dark"] .theme-sw .track i{inset-inline-start:14px}
+  }
+  @media(max-width:360px){
+    .erp-brand{font-size:0;padding:0}            /* mark only, keeps the anchor */
+    .erp-brand::before{content:"AW";font-size:13px;font-weight:800;letter-spacing:.5px}
   }
 
   /* ===== responsive dashboard =====
@@ -586,14 +600,34 @@
     .quick-actions{width:100%}
     .quick-actions .btn{flex:1}
     .rq-chev{display:none}
-    .dash-rail{flex-direction:column}
-    .dash-rail>*{flex:1 1 auto}
+    /* MUST reset wrap too: a column flex container that still wraps sizes its
+       children by content, not by the container — that overflowed the page. */
+    .dash-rail{flex-direction:column;flex-wrap:nowrap}
+    .dash-rail>*{flex:1 1 auto;min-width:0}
   }
   @media(max-width:460px){
     .stats{grid-template-columns:1fr 1fr;gap:8px}
-    .stat{flex-direction:column;align-items:flex-start;gap:6px}
+    .stat{flex-direction:column;align-items:flex-start;gap:5px;padding:11px 12px}
+    .stat-ic{width:30px;height:30px;border-radius:8px;font-size:14px}
+    .stat-l{font-size:11.5px;line-height:1.25}
+    .stat-n{font-size:20px}
     .wrap{padding:0 12px}
     .list-head h1{font-size:19px}
+    /* comfortable touch targets (blueprint: min 44px) */
+    .seq-row{padding:10px}
+    .seq-b{padding:8px 9px;font-size:11px}
+    .modal{padding:16px 15px}
+    .modal-f{flex-direction:column-reverse;gap:8px}
+    .modal-f .btn{width:100%;padding:11px}
+    .chips .chip{padding:9px 12px}
+    .up-when{min-width:64px;font-size:12px}
+    /* filter row: make it obvious it scrolls rather than looking cut off */
+    .tabs{padding-inline-end:18px;
+      -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);
+      mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent)}
+    html[dir="rtl"] .tabs{
+      -webkit-mask-image:linear-gradient(to left,#000 calc(100% - 18px),transparent);
+      mask-image:linear-gradient(to left,#000 calc(100% - 18px),transparent)}
   }
 </style>
 </head>
@@ -756,6 +790,7 @@ const DICT = {
   asg_step2:      {en:"Set the work order", ar:"ترتيب العمل"},
   asg_next:       {en:"Next", ar:"التالي"},
   asg_preview:    {en:"Team timeline", ar:"الجدول الزمني للفريق"},
+  asg_drag:       {en:"Hold and drag to reorder", ar:"اضغط مطوّلًا واسحب لإعادة الترتيب"},
   asg_back:       {en:"Back", ar:"رجوع"},
   grp1_short:     {en:"Review group 1", ar:"مجموعة المراجعة ١"},
   grp2_short:     {en:"Review group 2", ar:"مجموعة المراجعة ٢"},
@@ -1232,6 +1267,27 @@ function tl(actor,en,ar,time){ return {actor, en, ar, time: time||Date.now()}; }
 function tlNote(actor,en,ar,note,files){ return {actor, en, ar, note:note||"", files:files&&files.length?files:undefined, time:Date.now()}; }
 function noti(role,reqId,en,ar){ return {id:uid(), role, reqId, en, ar, read:false, time:Date.now()}; }
 function uid(){ return Math.random().toString(36).slice(2,9); }
+/* ---------- modal scroll lock ----------
+   Without this the page behind a modal scrolls under your finger on a phone.
+   Position-fixed + restoring scrollTop is the only approach that also stops
+   iOS Safari's rubber-band scroll chaining. */
+let _lockY=0, _lockDepth=0;
+function lockScroll(){
+  if(_lockDepth++) return;
+  _lockY=window.scrollY||document.documentElement.scrollTop||0;
+  const b=document.body;
+  b.style.position="fixed"; b.style.top=(-_lockY)+"px";
+  b.style.insetInlineStart="0"; b.style.width="100%";
+  b.style.overflow="hidden";
+}
+function unlockScroll(){
+  if(--_lockDepth>0) return;
+  _lockDepth=0;
+  const b=document.body;
+  b.style.position=""; b.style.top=""; b.style.insetInlineStart="";
+  b.style.width=""; b.style.overflow="";
+  window.scrollTo(0,_lockY);
+}
 function migrateSavedWorkflow(saved){
   let changed=false;
   /* v6 task 5: review1/review2 became two review *stages* with four named reviewers.
@@ -2907,8 +2963,8 @@ function askAssign(rq){
   let step=1;
   const ov=document.createElement("div"); ov.className="modal-ov";
   ov.innerHTML=`<div class="modal modal-lg"><div id="asgBody"></div></div>`;
-  document.body.appendChild(ov);
-  const close=()=>ov.remove();
+  document.body.appendChild(ov); lockScroll();
+  const close=()=>{ ov.remove(); unlockScroll(); };
   ov.onclick=e=>{ if(e.target===ov) close(); };
 
   const body=ov.querySelector("#asgBody");
@@ -2937,9 +2993,9 @@ function askAssign(rq){
     const ed=[rq.assign.reporter, rq.assign.journalist, rq.assign.heba].filter(Boolean);
     return `<div class="seq">
       ${draft.seq.map((n,i)=>`
-        <div class="seq-row" draggable="true" data-i="${i}">
+        <div class="seq-row" data-i="${i}" data-name="${esc(n)}">
           <span class="seq-n">${i+1}</span>
-          <span class="seq-grip">⠿</span>
+          <span class="seq-grip" title="${esc(t("asg_drag"))}">⠿</span>
           <span class="seq-name" dir="auto">${esc(n)}</span>
           <span class="seq-kind">${esc(kindLabelOf(n))}</span>
           <span class="seq-btns">
@@ -3029,18 +3085,36 @@ function askAssign(rq){
       [draft.seq[i],draft.seq[j]]=[draft.seq[j],draft.seq[i]];
       draw();
     });
+    /* Reorder via POINTER events, not HTML5 drag-and-drop — `draggable` never
+       fires on touch, so the phone could not reorder at all. Pointer events cover
+       mouse, touch and pen with one path. The DOM node is moved live and the
+       order is read back on release, so no re-render interrupts the gesture. */
     body.querySelectorAll(".seq-row[data-i]").forEach(el=>{
-      el.ondragstart=()=>{ dragFrom=+el.dataset.i; el.classList.add("dragging"); };
-      el.ondragend  =()=>{ el.classList.remove("dragging"); };
-      el.ondragover =e=>{ e.preventDefault(); el.classList.add("over"); };
-      el.ondragleave=()=>el.classList.remove("over");
-      el.ondrop     =e=>{ e.preventDefault();
-        const to=+el.dataset.i;
-        if(dragFrom!=null&&dragFrom!==to){
-          const [m]=draft.seq.splice(dragFrom,1);
-          draft.seq.splice(to,0,m);
-        }
-        dragFrom=null; draw();
+      const grip=el.querySelector(".seq-grip"); if(!grip) return;
+      grip.onpointerdown=e=>{
+        e.preventDefault();
+        el.classList.add("dragging");
+        try{ grip.setPointerCapture(e.pointerId); }catch(_){}
+        const onMove=ev=>{
+          const pt=document.elementFromPoint(ev.clientX,ev.clientY);
+          const over=pt&&pt.closest?pt.closest(".seq-row[data-i]"):null;
+          if(!over||over===el||over.parentNode!==el.parentNode) return;
+          const r=over.getBoundingClientRect();
+          const after=ev.clientY > r.top + r.height/2;
+          over.parentNode.insertBefore(el, after?over.nextSibling:over);
+        };
+        const onUp=()=>{
+          window.removeEventListener("pointermove",onMove);
+          window.removeEventListener("pointerup",onUp);
+          window.removeEventListener("pointercancel",onUp);
+          el.classList.remove("dragging");
+          /* read the new order straight off the DOM */
+          draft.seq=[...body.querySelectorAll(".seq-row[data-name]")].map(r=>r.dataset.name);
+          draw();
+        };
+        window.addEventListener("pointermove",onMove);
+        window.addEventListener("pointerup",onUp);
+        window.addEventListener("pointercancel",onUp);
       };
     });
     const x=body.querySelector("#asgX"); if(x) x.onclick=close;
@@ -3076,9 +3150,9 @@ function askNote(titleText, cb, required){
       <button class="btn" id="noteCancel">${esc(t("cancel"))}</button>
       <button class="btn primary" id="noteOk">${esc(t("ok"))}</button>
     </div></div>`;
-  document.body.appendChild(ov);
+  document.body.appendChild(ov); lockScroll();
   const ta=ov.querySelector("#noteTA"); ta.focus();
-  const close=()=>ov.remove();
+  const close=()=>{ ov.remove(); unlockScroll(); };
   ov.addEventListener("click",e=>{ if(e.target===ov) close(); });
   ov.querySelector("#noteX").onclick=close;
   ov.querySelector("#noteCancel").onclick=close;
