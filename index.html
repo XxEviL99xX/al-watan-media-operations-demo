@@ -971,17 +971,15 @@ const DICT = {
 function t(k){ const e=DICT[k]; return e ? e[state.lang] : k; }
 
 /* ---------- roles ---------- */
-const ROLES = ["requester","marketing","head","journal","publisher","client"];
+const ROLES = ["requester","marketing","head","journal","client"];
 const ROLE_LABEL = {
   requester:{en:"Requester",ar:"مقدم الطلب",ic:"📝"},
   marketing:{en:"Marketing Manager",ar:"مدير التسويق",ic:"📣"},
   head:{en:"Production Head",ar:"رئيس قسم الإنتاج",ic:"🎬"},
   journal:{en:"Editorial Manager",ar:"مسؤول المحررين",ic:"🗞️"},
-  /* v7/T6 placeholder — real publishing role still OPEN with Ahmed.
-     Deliberately NOT called "Publishing Officer": that title already belongs to the
-     Editorial & Publishing REVIEWER (aabdulla). Whether they are the same person is
-     one of the open questions. */
-  publisher:{en:"Publisher (role to confirm)",ar:"جهة النشر (قيد التأكيد)",ic:"🚀"},
+  /* v7/T6: publishing = the media_manager permission tier (Ahmed, 2026-07-23).
+     In this demo that maps to the Production Head — the senior manager who already
+     approves, assigns and routes — so there is no separate "publisher" account. */
   team:{en:"Production Team",ar:"فريق الإنتاج",ic:"🎥"},
   /* review1/review2 are no longer login roles — they are the two review *stages*.
      Kept here so timeline/owner labels for the stage kinds still render nicely. */
@@ -1032,7 +1030,6 @@ const PERSON = {
   marketing:{en:"Mariam Al Nasser", ar:"مريم الناصر"},
   head:     {en:"Khalid Al Sayegh", ar:"خالد الصايغ"},
   journal:  {en:"Zahra Al Mushaigri", ar:"زهراء المشيقري"},
-  publisher:{en:"Publisher (to confirm)", ar:"جهة النشر (قيد التأكيد)"},
   client:   {en:"Client contact", ar:"ممثل العميل"},
 };
 function personName(id){
@@ -1048,7 +1045,7 @@ function roleSubLabel(id){
 }
 function avatarBg(id){
   const m={requester:"#2b5fa8",marketing:"#7148b3",head:"#B32025",journal:"#4f63c4",
-           publisher:"#217a4a",review1:"#4f63c4",review2:"#3f53b4",client:"#5b6470"};
+           review1:"#4f63c4",review2:"#3f53b4",client:"#5b6470"};
   if(m[id]) return m[id];
   if(REVIEWERS[id]) return REVIEWERS[id].stage==="review1"?"#4f63c4":"#3f53b4";
   const k=STAFF[id]; return k==="producer"?"#2f9e6f":k==="shooter"?"#8a5ac4":k==="editor"?"#2f8f9e":"#d9822b";
@@ -1070,10 +1067,10 @@ const STATUS = {
   client_version:      {cls:"client",   owner:["client"], step:6},
   cancellation_request:{cls:"changes",  owner:["head"], step:6},
   /* v7/T6: after client approval the request LEAVES the client's action queue and
-     lands with a publisher. ⚠️ OPEN — the real role/account is unknown; مسؤول النشر
-     is a deliberate placeholder until Ahmed answers. The client keeps read-only
-     visibility plus the agreed ONE final-change round, but owes no action. */
-  ready_to_publish:    {cls:"work",     owner:["publisher"], step:7},
+     lands with the media_manager, who presses نشر (Ahmed, 2026-07-23). In this demo
+     that is the Production Head. The client keeps read-only visibility but owes no
+     action — approval is a clean handover. */
+  ready_to_publish:    {cls:"work",     owner:["head"], step:7},
   published:           {cls:"done",     owner:[], step:8},
   cancelled:           {cls:"cancelled",owner:[], step:8},
 };
@@ -1158,7 +1155,7 @@ const STAGE_GUIDE = {
     n:{en:"Confirm → Cancelled. Continue → Revision routing.",ar:"تأكيد ← ملغى. متابعة ← توجيه التعديلات."},
     o:{en:"Confirm the cancellation, or continue and revise.",ar:"أكّد الإلغاء، أو تابع وعدّل."}},
   ready_to_publish:{
-    d:{en:"Client approved — with the publisher now, no longer in the client's queue.",ar:"اعتمده العميل — لدى مسؤول النشر، ولم يعد في قائمة العميل."},
+    d:{en:"Client approved — with the Production Head now, no longer in the client's queue.",ar:"اعتمده العميل — لدى رئيس القسم الآن، ولم يعد في قائمة العميل."},
     n:{en:"Publish → Published & archived (point of no return).",ar:"نشر ← تم النشر والأرشفة (نقطة اللاعودة)."},
     o:{en:"Press Publish. No link or attachment is required.",ar:"اضغط نشر. لا يلزم رابط أو مرفق."}},
   published:{ d:{en:"Published & archived — permanent record.",ar:"تم النشر والأرشفة — سجل دائم."}, n:{en:"—",ar:"—"}, o:{en:"",ar:""}},
@@ -1321,6 +1318,12 @@ function migrateSavedWorkflow(saved){
   if(legacyRev[saved.currentUser]){ saved.currentUser=legacyRev[saved.currentUser]; changed=true; }
   (saved.notifications||[]).forEach(n=>{
     if(legacyRev[n.role]){ n.role=legacyRev[n.role]; changed=true; }
+  });
+  /* v7/T6 (2026-07-23): the "publisher" placeholder is gone — publishing is the
+     Production Head. Remap any old publisher login / notifications to head. */
+  if(saved.currentUser==="publisher"){ saved.currentUser="head"; changed=true; }
+  (saved.notifications||[]).forEach(n=>{
+    if(n.role==="publisher"){ n.role="head"; changed=true; }
   });
   (saved.requests||[]).forEach(rq=>{
     /* g1By/g2By: earlier builds stored a single id (or null); normalise to an array */
@@ -1623,7 +1626,7 @@ function render(){
   /* v7/T6 access guard — must run BEFORE dispatch, not inside viewDetail:
      swapping the HTML there would still leave bindDetail() looking for controls
      that no longer exist. Once the client approves, the request belongs to the
-     publisher and the client is bounced back to their own queue. */
+     Production Head (the media_manager) and the client is bounced back to their queue. */
   if(state.view==="detail"){
     const _rq=reqById(state.activeReq);
     if(_rq && myRole()==="client" && _rq.status==="ready_to_publish"){ state.view="list"; }
@@ -1839,9 +1842,8 @@ function roleHint(r){
   const h={
     requester:{en:"Creates & submits requests",ar:"ينشئ الطلبات ويرسلها"},
     marketing:{en:"First approval",ar:"الموافقة الأولى"},
-    head:{en:"Final approval · assigns team · routing",ar:"الموافقة النهائية · تعيين الفريق · التوجيه"},
+    head:{en:"Final approval · assigns team · routing · publishes",ar:"الموافقة النهائية · تعيين الفريق · التوجيه · النشر"},
     journal:{en:"Resolves generic editorial roles",ar:"يحسم الأدوار التحريرية العامة"},
-    publisher:{en:"Presses Publish after client approval",ar:"يضغط نشر بعد موافقة العميل"},
     team:{en:"Shooting · editing",ar:"التصوير · المونتاج"},
     client:{en:"Reviews & approves the final video",ar:"يراجع الفيديو النهائي ويعتمده"},
   }[r]; return h?h[state.lang]:"";
@@ -2173,7 +2175,7 @@ function viewList(){
   const r=myRole();
   let base = state.requests.slice().sort((a,b)=>b.created-a.created);
   // client sees only requests that reached client stage
-  /* v7/T6: once the client approves, the request hands over to the publisher and
+  /* v7/T6: once the client approves, the request hands over to the Production Head and
      LEAVES the client's queue — ready_to_publish is deliberately not listed here.
      The client keeps published/cancelled as read-only history. */
   if(r==="client") base=base.filter(x=>["client_version","published","cancelled"].includes(x.status));
@@ -2548,11 +2550,11 @@ function actionButtons(rq, r){
   /* The client's ONLY decision point is نسخة العميل: approve, request changes, or
      reject. Cancelling and change-requests must happen BEFORE approval. */
   if(r==="client" && s==="client_version"){ B.push(b("cl_ok","client_approve","good")); B.push(b("cl_ch","client_changes","warn")); B.push(b("cl_rej","client_reject","danger")); }
-  /* v7/T6: only the publisher presses نشر. Publishing just sets the status — it needs
-     no article URL, video link, caption or attachment (working decision 2026-07-21).
-     The client has NO action here: approving hands the request over, and it leaves
-     their queue entirely (see viewList — ready_to_publish is not client-visible). */
-  if(r==="publisher" && s==="ready_to_publish"){ B.push(b("tm_publish","publish","primary")); }
+  /* v7/T6: only the media_manager presses نشر (Ahmed, 2026-07-23) — here the Production
+     Head. Publishing just sets the status — it needs no article URL, video link, caption
+     or attachment (working decision 2026-07-21). The client has NO action here: approving
+     hands the request over, and it leaves their queue (see viewList). */
+  if(r==="head" && s==="ready_to_publish"){ B.push(b("tm_publish","publish","primary")); }
   if(r==="head" && s==="cancellation_request"){ B.push(b("hd_confirm_cancel","confirm_cancel","danger")); B.push(b("hd_continue","continue_rout","good")); }
 
   return B.join("");
@@ -2936,7 +2938,7 @@ function doAction(act, rq, note, files){
       rq.status="revision_routing"; pushNoti("head",rq,"Client requested changes — pick restart stage.","طلب العميل تعديلات — اختر مرحلة الاستئناف."); break;
     /* UNREACHABLE under the current rule: the client has no action at
        ready_to_publish any more (2026-07-22 — approval hands over to the
-       publisher and the request leaves the client's queue). Kept only in case
+       Production Head and the request leaves the client's queue). Kept only in case
        Ahmed reinstates the agreed one-round final-change window. */
     case "cl_final":
       addTl(rq,"Client requested a final change — routed to Production Head.","طلب العميل تعديلًا أخيرًا — أُحيل لرئيس الإنتاج.",note,files);
