@@ -273,6 +273,21 @@
   .noti-x:hover{background:var(--line);color:var(--ink)}
   .empty{padding:30px;text-align:center;color:var(--muted)}
 
+  /* toasts — transient confirmations, bottom of the screen, auto-dismiss */
+  .toast-wrap{position:fixed;inset-block-end:18px;inset-inline-start:50%;transform:translateX(-50%);
+    z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;
+    width:max-content;max-width:92vw}
+  .toast{pointer-events:auto;display:flex;align-items:center;gap:9px;background:var(--panel);color:var(--ink);
+    border:1px solid var(--line);border-inline-start:4px solid var(--brand);border-radius:10px;
+    padding:10px 14px;font-size:13.5px;box-shadow:0 8px 24px rgba(16,24,40,.22);
+    max-width:92vw;opacity:0;transform:translateY(10px);transition:opacity .22s ease,transform .22s ease}
+  .toast.in{opacity:1;transform:translateY(0)}
+  .toast.good{border-inline-start-color:var(--assign,#217a4a)}
+  .toast.warn{border-inline-start-color:var(--changes,#c77700)}
+  .toast.danger{border-inline-start-color:var(--cancelled,#c23b3b)}
+  .toast .t-ic{font-size:15px;line-height:1;flex:none}
+  .toast .t-msg{min-width:0}
+
   /* compact language and theme buttons (top bar) */
   .lang-btn{min-width:42px;font-weight:800}
   .icon-btn{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:6px 10px}
@@ -659,6 +674,7 @@
 <body>
 <div id="topbar"></div>
 <div id="app"></div>
+<div id="toasts" class="toast-wrap" aria-live="polite" aria-atomic="false"></div>
 
 <script>
 /* ============================================================
@@ -1364,6 +1380,19 @@ function load(){
     }
   }catch(e){}
   const s = seed(); try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} return s;
+}
+/* transient confirmation toast — auto-dismisses; kind ∈ good|warn|danger|"" */
+function toast(msg, kind){
+  const wrap=document.getElementById("toasts"); if(!wrap||!msg) return;
+  const ic={good:"✓",warn:"✎",danger:"⚠"}[kind]||"ℹ";
+  const el=document.createElement("div");
+  el.className="toast "+(kind||"");
+  el.innerHTML=`<span class="t-ic">${ic}</span><span class="t-msg" dir="auto">${esc(msg)}</span>`;
+  wrap.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add("in"));
+  const kill=()=>{ el.classList.remove("in"); setTimeout(()=>el.remove(),240); };
+  const timer=setTimeout(kill,3200);
+  el.onclick=()=>{ clearTimeout(timer); kill(); };
 }
 function save(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
@@ -2084,6 +2113,7 @@ function bindNew(){
         tlNote("requester","Submitted a change request — awaiting Marketing approval.","قدّم طلب تعديل — بانتظار موافقة التسويق.",note),
         {diff}));
       pushNoti("marketing",rq,"A change request awaits your approval.","طلب تعديل بانتظار موافقتك.");
+      toast(state.lang==="ar"?"أُرسل طلب التعديل":"Change request submitted","good");
       state.crEdit=null; state.activeReq=rq.id; state.view="detail"; save(); render(); return;
     }
 
@@ -2115,6 +2145,7 @@ function bindNew(){
       pushNoti("marketing", rq,
         inPlace?"The requester updated a request awaiting your approval.":"A revised request awaits your approval.",
         inPlace?"عدّل مقدّم الطلب طلبًا بانتظار موافقتك.":"طلب مُعدّل بانتظار موافقتك.");
+      toast(state.lang==="ar"?"تم تحديث الطلب":"Request updated","good");
       state.view="detail"; save(); render(); return;
     }
     const r=Object.assign({ id:state.seq++, requester:"requester", status:"marketing_approval", created:Date.now(),
@@ -2125,6 +2156,7 @@ function bindNew(){
       timeline:[tl("requester","Submitted the request.","قدّم الطلب.")] }, fields);
     state.requests.push(r);
     pushNoti("marketing", r, "New request awaiting your approval.","طلب جديد بانتظار موافقتك.");
+    toast(state.lang==="ar"?"تم إرسال الطلب":"Request submitted","good");
     state.activeReq=r.id; state.view="detail"; save(); render();
   };
 }
@@ -2803,6 +2835,7 @@ function bindDetail(){
         {diff:cr.diff}));
       rq.changeReq=null;
       pushNoti("requester",rq,"Your change request was approved and applied.","تمت الموافقة على طلب تعديلك وتطبيقه.");
+      toast(state.lang==="ar"?"طُبِّق التعديل على الطلب":"Change applied","good");
       save(); render(); return;
     }
     if(what==="reject"){
@@ -2812,12 +2845,14 @@ function bindDetail(){
         rq.changeReq=null;
         rq.status="cancelled";
         pushNoti("requester",rq,"Your change request was declined and the request was cancelled.","تم رفض طلب تعديلك وإلغاء الطلب.");
+        toast(state.lang==="ar"?"رُفض التعديل وأُلغي الطلب":"Change declined — request cancelled","danger");
         save(); render();
       }, true); return;
     }
     if(what==="withdraw"){
       addTl(rq,"Withdrew the change request.","سحب طلب التعديل.");
       rq.changeReq=null;
+      toast(state.lang==="ar"?"تم سحب طلب التعديل":"Change request withdrawn","warn");
       save(); render();
     }
   });
@@ -2838,10 +2873,12 @@ function bindDetail(){
         if(rec.start){ save(); render(); return; }
         rec.start=p;
         addTl(rq,"Started field work.","بدأ العمل الميداني.",where);
+        toast(state.lang==="ar"?"سُجّل بدء العمل":"Work started — location logged","good");
       }else{
         if(!rec.start || rec.end){ save(); render(); return; }
         rec.end=p;
         addTl(rq,"Finished field work.","أنهى العمل الميداني.",where+" · "+fmtDur(rec.end.time-rec.start.time));
+        toast(state.lang==="ar"?"سُجّل إنهاء العمل":"Work finished — location logged","good");
         /* v7/T4: finishing is the ONLY end action — when the last required member
            on this stage has finished, the workflow advances by itself. */
         finishStageIfDone(rq);
@@ -2878,6 +2915,7 @@ function bindDetail(){
     addTl(rq,"Selected "+staffEn+". The complete team is active and production started.","تم اختيار "+staffAr+". الفريق مكتمل وبدأ الإنتاج.");
     rq.status="in_progress";
     notifyOwners(rq,"The complete team is assigned — production has started.","تم تعيين الفريق بالكامل — بدأ الإنتاج.");
+    toast(state.lang==="ar"?"تم اختيار الطاقم التحريري":"Editorial staff selected","good");
     save(); render();
   };
 
@@ -2891,6 +2929,7 @@ function bindDetail(){
     err.textContent="";
     const files=await readFiles(picked);
     rq.comments.push({role:r, text:txt, files, time:Date.now(), internal: r!=="client"});
+    toast(state.lang==="ar"?"أُضيف التعليق":"Comment added","good");
     save(); render();
   };
 }
@@ -2974,8 +3013,32 @@ function doAction(act, rq, note, files){
       addTl(rq,"Cancellation declined — continue to revision routing.","رُفض الإلغاء — المتابعة لتوجيه التعديلات.");
       rq.status="revision_routing"; break;
   }
+  const tm=ACTION_TOASTS[act]; if(tm) toast(state.lang==="ar"?tm[1]:tm[0], tm[2]);
   save(); render();
 }
+/* short confirmation shown as a toast per workflow action: [en, ar, kind] */
+const ACTION_TOASTS={
+  mk_approve:["Approved — sent to Head","تمت الموافقة — أُحيل للرئيس","good"],
+  hd_approve:["Approved","تمت الموافقة","good"],
+  mk_changes:["Changes requested","طُلبت تعديلات","warn"],
+  hd_changes:["Changes requested","طُلبت تعديلات","warn"],
+  mk_forward:["Forwarded to Head","أُحيل للرئيس","good"],
+  mk_toreq:["Sent back to requester","أُعيد لمقدّم الطلب","warn"],
+  tm_done:["Work started — now in Shooting","بدأ العمل — انتقل للتصوير","good"],
+  r1_ok:["Review approved","اعتُمدت المراجعة","good"],
+  r2_ok:["Review approved","اعتُمدت المراجعة","good"],
+  r1_ch:["Changes requested","طُلبت تعديلات","warn"],
+  r2_ch:["Changes requested","طُلبت تعديلات","warn"],
+  route_ip:["Sent back to Preparation","أُعيد للتحضير","warn"],
+  route_sh:["Sent back to Shooting","أُعيد للتصوير","warn"],
+  route_ed:["Sent back to Editing","أُعيد للمونتاج","warn"],
+  cl_ok:["Client approved — ready to publish","اعتمد العميل — جاهز للنشر","good"],
+  cl_ch:["Changes requested","طُلبت تعديلات","warn"],
+  cl_rej:["Client rejected — cancellation raised","رفض العميل — رُفع طلب إلغاء","danger"],
+  tm_publish:["Published & archived","تم النشر والأرشفة","good"],
+  hd_confirm_cancel:["Request cancelled","أُلغي الطلب","danger"],
+  hd_continue:["Continuing — revision routing","المتابعة — توجيه التعديل","good"],
+};
 function checkReviewComplete(rq){
   if(rq.g1 && rq.g2){
     rq.clientLink="https://portal.alwatannews.net/c/"+uid()+uid();
@@ -3011,6 +3074,7 @@ function finalizeAssign(rq){
     rq.status="in_progress";
     notifyOwners(rq,"You've been assigned — your stage is ready.","تم تعيينك — مرحلتك جاهزة.");
   }
+  toast(state.lang==="ar"?"تم تعيين الفريق":"Team assigned","good");
   save(); render();
 }
 
