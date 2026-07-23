@@ -445,8 +445,24 @@
   :root[data-theme="dark"] .diff-new{background:#16311e;color:#8fdca6}
   :root[data-theme="dark"] .cr-banner{background:#2a2013;border-color:#5a4020;color:#e8c48a}
 
-  /* field tracking (start / finish with date, time & location) */
-  .fieldrow{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:10px;background:var(--bg)}
+  /* work tracking — grouped by where the work happens, numbered in work order */
+  .trkgrp{margin-top:14px}
+  .trk-h{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 10px;
+         padding:0 2px 8px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .trk-h-t{font-size:12.5px;font-weight:700;color:var(--ink)}
+  .trk-h-c{font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+  .trk-row{position:relative;display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+  /* connector line: from under this badge down to the next one */
+  .trk-row:not(:last-child)::before{content:"";position:absolute;inset-inline-start:12px;
+         top:32px;bottom:-12px;width:2px;background:var(--line);border-radius:2px}
+  .trk-n{flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;
+         justify-content:center;font-size:12px;font-weight:700;background:var(--line);color:var(--muted);
+         border:2px solid var(--panel);position:relative;z-index:1}
+  .trk-n.done{background:var(--done);color:#fff}
+  .trk-n.now{background:var(--work);color:#fff;box-shadow:0 0 0 3px rgba(43,95,168,.18)}
+  .fieldrow{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+  .trk-row.done .fieldrow{border-color:color-mix(in srgb,var(--done) 35%,var(--line))}
+  .trk-row.now  .fieldrow{border-color:color-mix(in srgb,var(--work) 45%,var(--line))}
   .fl-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
   .fl-name{font-weight:700}
   .fl-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:6px;font-size:12.5px}
@@ -968,6 +984,11 @@ const DICT = {
   field_started_l:{en:"Started", ar:"البدء"},
   field_ended_l:  {en:"Finished", ar:"الإنهاء"},
   field_pending:  {en:"Not started yet", ar:"لم يبدأ بعد"},
+  field_waitst:   {en:"Waiting for this stage", ar:"بانتظار المرحلة"},
+  /* the two places work happens — shown once as a group header, never per row */
+  trk_place_sh:   {en:"On location · Shooting", ar:"في الموقع · التصوير"},
+  trk_place_ed:   {en:"In-house · Editing", ar:"داخل المؤسسة · المونتاج"},
+  trk_count:      {en:"completed", ar:"اكتملوا"},
   field_inprog:   {en:"Working now", ar:"قيد العمل الآن"},
   field_done:     {en:"Work completed", ar:"اكتمل العمل"},
   field_dur:      {en:"Duration", ar:"المدة"},
@@ -1029,7 +1050,9 @@ const KIND_LABEL = {
   editor:{en:"Video editor",ar:"فني مونتاج",ic:"✂️"},
   reporter:{en:"Reporter / presenter",ar:"مراسل / مقدّم",ic:"🎤"},
   journalist:{en:"Journalist",ar:"صحفي",ic:"📰"},
-  heba:{en:"Heba",ar:"هبة",ic:"🎙️"},
+  /* Heba is a named person, not a role placeholder — but her ROW still needs a job
+     title, otherwise roleName() renders the useless "Heba · Heba". */
+  heba:{en:"Journalist",ar:"صحفية",ic:"🎙️"},
 };
 function kindOf(id){ if(ROLES.includes(id)) return id; if(REVIEWERS[id]) return REVIEWERS[id].stage; return (typeof STAFF!=="undefined" && STAFF[id]) ? STAFF[id] : "staff"; }
 /* "staff" = production team members (assigned per-request). Reviewers are org-level
@@ -2707,38 +2730,62 @@ function fieldPanel(rq, r){
       ${p.acc!=null?`<span class="small muted">±${esc(p.acc)} m</span>`:""}
       ${p.sim?`<span class="fl-sim">${esc(t("field_sim"))}</span>`:""}
     </div>` : "";
-  const rows=members.map(name=>{
+  /* one row; `n` is its position in the overall work order */
+  const row=(name,stage,n)=>{
     const rec=recs[name]||{};
     const isMe=(name===r);
     /* frozen while a change request is pending — the brief may still change */
     const mine=isMe&&canTrackNow(rq,name)&&!rq.changeReq;
-    let chip="", btn="";
+    let chip="", btn="", mark=String(n), cls="";
     if(rec.end){
       chip=`<span class="st done" style="padding:1px 8px">✔ ${esc(t("field_done"))}</span>`;
+      mark="✓"; cls="done";
     }else if(rec.start){
       chip=`<span class="st work" style="padding:1px 8px">${esc(t("field_inprog"))}</span>`;
+      cls="now";
       if(mine) btn=`<button class="btn danger" data-field="end">⏹ ${esc(t("field_end"))}</button>`;
     }else{
-      chip=`<span class="small muted">— ${esc(t("field_pending"))}</span>`;
+      /* their stage hasn't arrived yet → say so, rather than the ambiguous "not started" */
+      const key = stage===rq.status ? "field_pending" : "field_waitst";
+      chip=`<span class="small muted">— ${esc(t(key))}</span>`;
       if(mine) btn=`<button class="btn good" data-field="start">▶ ${esc(t("field_start"))}</button>`;
     }
-    const onStage=`<span class="small muted" dir="auto">· ${esc(statusLabel(trackStageOf(rq,name)))}</span>`;
     const dur=(rec.start&&rec.end)
       ? `<div class="fl-line"><span class="fl-k">${esc(t("field_dur"))}</span><span class="fl-v">${esc(fmtDur(rec.end.time-rec.start.time))}</span></div>` : "";
-    return `<div class="fieldrow">
-      <div class="fl-top">
-        <span class="fl-name" dir="auto">${esc(roleName(name))}${isMe?` <span class="internal-tag">${esc(t("field_you"))}</span>`:""} ${onStage}</span>
-        ${chip}
+    return `<div class="trk-row ${cls}">
+      <div class="trk-n ${cls}">${esc(mark)}</div>
+      <div class="fieldrow">
+        <div class="fl-top">
+          <span class="fl-name" dir="auto">${esc(roleName(name))}${isMe?` <span class="internal-tag">${esc(t("field_you"))}</span>`:""}</span>
+          ${chip}
+        </div>
+        ${stamp("field_started_l",rec.start)}${stamp("field_ended_l",rec.end)}${dur}
+        ${btn?`<div class="btnrow" style="margin-top:8px">${btn}</div>`:""}
       </div>
-      ${stamp("field_started_l",rec.start)}${stamp("field_ended_l",rec.end)}${dur}
-      ${btn?`<div class="btnrow" style="margin-top:8px">${btn}</div>`:""}
+    </div>`;
+  };
+  /* grouped by WHERE the work happens — the stage is stated once in the header,
+     never repeated on every row (a reporter is not "doing shooting") */
+  const PLACE={shooting:"trk_place_sh", editing:"trk_place_ed"};
+  let n=0;
+  const groups=TRACK_STAGES.map(stage=>{
+    const people=stageMembers(rq,stage);
+    if(!people.length) return "";
+    const rows=people.map(name=>row(name,stage,++n)).join("");
+    const done=people.filter(name=>(recs[name]||{}).end).length;
+    return `<div class="trkgrp">
+      <div class="trk-h">
+        <span class="trk-h-t" dir="auto">${esc(t(PLACE[stage]))}</span>
+        <span class="trk-h-c">${done} / ${people.length} ${esc(t("trk_count"))}</span>
+      </div>
+      ${rows}
     </div>`;
   }).join("");
   return `<div class="section">
     <h2>🛰️ ${esc(t("field_h"))}</h2>
     <div class="note">${esc(t("field_note"))}</div>
     <div id="fieldMsg" class="small muted" style="margin-top:8px;display:none"></div>
-    ${rows}
+    ${groups}
   </div>`;
 }
 function reviewPanel(rq){
