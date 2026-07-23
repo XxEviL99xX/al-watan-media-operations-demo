@@ -864,6 +864,9 @@ const DICT = {
   already_assigned:{en:"Already assigned by the requester — no selection needed",
                     ar:"مُعيَّن مسبقًا من مقدّم الطلب — لا حاجة للاختيار"},
   confirm_reporter:{en:"Confirm selection & start production", ar:"تأكيد الاختيار وبدء الإنتاج"},
+  select_staff:   {en:"Select staff", ar:"اختيار الطاقم"},
+  jr_order_hint:  {en:"Drag, or use ▲▼, to set who leads.", ar:"اسحب أو استخدم ▲▼ لتحديد من يبدأ."},
+  jr_pick_all:    {en:"Pick a person for each requested editorial role to continue.", ar:"اختر شخصًا لكل دور تحريري مطلوب للمتابعة."},
 
   /* revision routing */
   routing_h:      {en:"Revision routing — pick the restart stage", ar:"توجيه التعديلات — اختر مرحلة الاستئناف"},
@@ -2362,6 +2365,7 @@ function runDashboardAction(act,rq){
   const required=["cl_rej","hd_confirm_cancel"];
   if(act==="re_resubmit"||act==="re_edit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
   if(act==="hd_assign"){ askAssign(rq); return; }
+  if(act==="jr_assign"){ askJournal(rq); return; }
   if(act==="tm_done"){ startPreparation(rq); return; }   /* one click: advance + start tracking */
   if(noteActions[act]){ askNote(t(noteActions[act]),(note,files)=>doAction(act,rq,note,files),required.includes(act)); return; }
   doAction(act,rq);
@@ -2579,6 +2583,9 @@ function actionButtons(rq, r){
   if(r==="head" && s==="head_approval"){ B.push(b("hd_approve","approve","good")); B.push(b("hd_changes","request_changes","warn")); }
   /* assign opens the same modal from the queue row or the detail page */
   if(r==="head" && s==="assign_team"){ B.push(b("hd_assign","finalize_team","good")); }
+  /* Editorial Manager: same treatment as the Head — a quick-action from the queue
+     row that opens the pick-&-order modal (askJournal). */
+  if(r==="journal" && s==="journal_selection"){ B.push(b("jr_assign","select_staff","good")); }
   if(r==="marketing" && s==="changes_marketing"){ B.push(b("mk_forward","forward_head","good")); B.push(b("mk_toreq","send_requester","warn")); }
   /* v7/T4: "إنهاء المرحلة" is DELETED from the tracked stages (shooting/editing).
      There, ⏹ إنهاء العمل both stops tracking and — once the LAST required member has
@@ -2632,29 +2639,22 @@ function assignPanel(rq){
          ${editorialStaffParts(rq).length?`<div class="small" style="color:var(--assign);font-weight:700;margin-top:8px">✔ ${esc(t("reporter_chosen"))}: ${esc(editorialStaffParts(rq).join(" · "))}</div>`:""}`
       : `<div class="small muted" style="margin-top:16px">${esc(t("no_editorial"))}</div>`}`;
 }
+/* Editorial Manager detail panel — like the Head's assignPanel, it just launches the
+   modal (same control as the queue quick-action). The chip-picking + drag order now
+   live in askJournal(), so this only shows what's needed and what's chosen. */
 function journalPanel(rq){
-  const repSection = rq.assign.reporterNeeded ? `
-    <div class="small muted" style="margin-top:10px">🎤 ${esc(t("kind_reporter"))}</div>
-    <div class="chips" id="repChips">
-      ${ROSTER.reporters.map(n=>`<span class="chip ${rq.assign.reporter===n?"sel":""}" data-rep="${esc(n)}">${esc(n)}</span>`).join("")}
-    </div>` : "";
-  const jourSection = rq.assign.journalistNeeded ? `
-    <div class="small muted" style="margin-top:10px">📰 ${esc(t("f_journalist"))}</div>
-    <div class="chips" id="jourChips">
-      ${ROSTER.journalists.map(n=>`<span class="chip ${rq.assign.journalist===n?"sel":""}" data-jour="${esc(n)}">${esc(n)}</span>`).join("")}
-    </div>` : "";
-  /* v7/T3: named people are already assigned — the Editorial Manager only resolves
-     the GENERIC roles. He never re-picks (or changes) a named person. */
-  const namedSection = rq.assign.heba ? `
-    <div class="small" style="color:var(--assign);font-weight:700;margin-top:12px" dir="auto">
-      ✔ ${esc(t("already_assigned"))}: ${esc(t("f_heba"))}
-    </div>` : "";
+  const a=rq.assign;
+  const flagged=[
+    a.reporterNeeded   && ("🎤 "+t("f_reporter")+" — "+t("generic_pending")),
+    a.journalistNeeded && ("📰 "+t("f_journalist")+" — "+t("generic_pending")),
+    a.heba             && ("🎙️ "+t("f_heba")+" — "+t("named_already")),
+  ].filter(Boolean);
+  const chosen=editorialStaffParts(rq);
   return `<h2>${esc(t("journal_h"))}</h2>
-    <div class="small muted">${esc(t("journal_pick"))}</div>
-    ${repSection}${jourSection}${namedSection}
-    <div class="btnrow" style="margin-top:14px">
-      <button class="btn good" id="confirmRep" ${editorialComplete(rq)?"":"disabled"}>${esc(t("confirm_reporter"))}</button>
-    </div>`;
+    <div class="small muted" style="margin-bottom:12px">${esc(t("journal_pick"))}</div>
+    <div class="btnrow"><button class="btn good" id="journalStaffBtn">${esc(t("select_staff"))}</button></div>
+    ${flagged.length?`<div class="small" style="font-weight:700;margin-top:16px" dir="auto">${esc(t("editorial_flagged"))} ${esc(flagged.join(" · "))}</div>`:""}
+    ${chosen.length?`<div class="small" style="color:var(--assign);font-weight:700;margin-top:8px">✔ ${esc(t("reporter_chosen"))}: ${esc(chosen.join(" · "))}</div>`:""}`;
 }
 /* pending change request — visible to internal roles; marketing decides, requester can withdraw */
 function changeReqPanel(rq, r){
@@ -2813,6 +2813,7 @@ function bindDetail(){
     const act=el.dataset.act;
     if(act==="re_resubmit"||act==="re_edit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
   if(act==="hd_assign"){ askAssign(rq); return; }
+    if(act==="jr_assign"){ askJournal(rq); return; }
     if(act==="tm_done"){ startPreparation(rq); return; }   /* one click: advance + start tracking */
     if(act==="re_change"){ state.crEdit=rq.id; state.view="new"; save(); render(); return; }
     if(NOTE_ACTIONS[act]){ askNote(t(NOTE_ACTIONS[act]), (n,f)=>doAction(act,rq,n,f), REQUIRED.includes(act)); return; }
@@ -2899,27 +2900,9 @@ function bindDetail(){
   const ft=document.getElementById("assignTeamBtn");
   if(ft) ft.onclick=()=>askAssign(rq);
 
-  // journal editorial staff pick (one chip list per requested role)
-  document.querySelectorAll("[data-rep]").forEach(el=>el.onclick=()=>{
-    rq.assign.reporter=el.dataset.rep; save(); render();
-  });
-  document.querySelectorAll("[data-jour]").forEach(el=>el.onclick=()=>{
-    rq.assign.journalist=el.dataset.jour; save(); render();
-  });
-  /* v7/T3: no picker for named people — they are assigned by the requester, so the
-     Editorial Manager never selects (or re-selects) them. */
-  const cr=document.getElementById("confirmRep");
-  if(cr) cr.onclick=()=>{
-    if(!editorialComplete(rq)) return;
-    rq.assign.reporterChosen=true;
-    const staffEn=[rq.assign.reporter&&("Reporter/presenter: "+rq.assign.reporter),rq.assign.journalist&&("Journalist: "+rq.assign.journalist),rq.assign.heba&&"Heba"].filter(Boolean).join(", ");
-    const staffAr=[rq.assign.reporter&&("المراسل/المقدّم: "+rq.assign.reporter),rq.assign.journalist&&("الصحفي: "+rq.assign.journalist),rq.assign.heba&&"هبة"].filter(Boolean).join("، ");
-    addTl(rq,"Selected "+staffEn+". The complete team is active and production started.","تم اختيار "+staffAr+". الفريق مكتمل وبدأ الإنتاج.");
-    rq.status="in_progress";
-    notifyOwners(rq,"The complete team is assigned — production has started.","تم تعيين الفريق بالكامل — بدأ الإنتاج.");
-    toast(state.lang==="ar"?"تم اختيار الطاقم التحريري":"Editorial staff selected","good");
-    save(); render();
-  };
+  // Editorial Manager — the detail button opens the same modal as the queue quick-action
+  const jb=document.getElementById("journalStaffBtn");
+  if(jb) jb.onclick=()=>askJournal(rq);
 
   // comments
   const ca=document.getElementById("cmtAdd");
@@ -3277,6 +3260,170 @@ function askAssign(rq){
       rq.assign.seq     =[...draft.seq];
       close();
       finalizeAssign(rq);
+    };
+  }
+  draw();
+}
+
+/* ---------- Editorial-staff modal (Editorial Manager) ----------
+   Same pattern as the Head's Assign modal: opens from the queue row or the detail
+   page, pick the people (step 1), set their lead order by drag / ▲▼ (step 2), then
+   confirm. Reporter and journalist are SINGLE-select; a named person (Heba) chosen by
+   the requester is shown read-only and never re-picked here (v7/T3). */
+function askJournal(rq){
+  const a=rq.assign;
+  const draft={reporter:a.reporter, journalist:a.journalist, seq:[]};
+  let step=1;
+  const ov=document.createElement("div"); ov.className="modal-ov";
+  ov.innerHTML=`<div class="modal modal-lg"><div id="jrBody"></div></div>`;
+  document.body.appendChild(ov); lockScroll();
+  const close=()=>{ ov.remove(); unlockScroll(); };
+  ov.onclick=e=>{ if(e.target===ov) close(); };
+  const body=ov.querySelector("#jrBody");
+
+  const picked=()=>[draft.reporter, draft.journalist].filter(Boolean);
+  const complete=()=> (!a.reporterNeeded || draft.reporter) && (!a.journalistNeeded || draft.journalist);
+  function syncSeq(){
+    const p=picked();
+    draft.seq=draft.seq.filter(n=>p.includes(n));
+    p.forEach(n=>{ if(!draft.seq.includes(n)) draft.seq.push(n); });
+  }
+  function kindLabelOf(n){ const k=STAFF[n]; return KIND_LABEL[k]?KIND_LABEL[k][state.lang]:""; }
+  function pill(kind,name,cur){
+    return `<span class="chip ${cur===name?"sel":""}" data-jp="${kind}|${esc(name)}">${esc(name)}</span>`;
+  }
+  function orderList(){
+    if(!draft.seq.length) return `<div class="small muted">${esc(t("asg_pick_first"))}</div>`;
+    const named = rq.assign.heba ? [rq.assign.heba] : [];
+    return `<div class="seq">
+      ${draft.seq.map((n,i)=>`
+        <div class="seq-row" data-i="${i}" data-name="${esc(n)}">
+          <span class="seq-n">${i+1}</span>
+          <span class="seq-grip" title="${esc(t("asg_drag"))}">⠿</span>
+          <span class="seq-name" dir="auto">${esc(n)}</span>
+          <span class="seq-kind">${esc(kindLabelOf(n))}</span>
+          <span class="seq-btns">
+            <button class="seq-b" data-mv="${i}|-1" ${i===0?"disabled":""}>▲</button>
+            <button class="seq-b" data-mv="${i}|1" ${i===draft.seq.length-1?"disabled":""}>▼</button>
+          </span>
+        </div>`).join("")}
+      ${named.map(n=>`<div class="seq-row static">
+          <span class="seq-n alt">•</span>
+          <span class="seq-name" dir="auto">${esc(n==="Heba"?t("f_heba"):n)}</span>
+          <span class="seq-kind">${esc(t("f_heba"))}</span>
+          <span class="small muted">${esc(t("named_already"))}</span>
+        </div>`).join("")}
+    </div>`;
+  }
+  function timelinePreview(){
+    if(!draft.seq.length) return "";
+    return `<div class="tlp">${draft.seq.map((n,i)=>`
+      <span class="tlp-i">
+        <span class="tlp-av" style="background:${avatarBg(n)}">${esc(n.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join(""))}</span>
+        <span class="tlp-n">${i+1}. ${esc(n)}</span>
+        <span class="tlp-k">${esc(kindLabelOf(n))}</span>
+      </span>`).join(`<span class="tlp-a">›</span>`)}</div>`;
+  }
+  function draw(){
+    syncSeq();
+    const stepDef=[[1,t("asg_step1")],[2,t("asg_step2")]];
+    const head=`<div class="modal-h"><h2>${esc(t("journal_h"))}</h2><button class="modal-x" id="jrX">✕</button></div>
+      <div class="wiz">
+        ${stepDef.map(([n,l])=>`<span class="wiz-i">
+           <span class="wiz-s ${step===n?"on":(step>n?"done":"")}">${step>n?"✓":n}</span>
+           <span class="wiz-l ${step===n?"on":""}">${esc(l)}</span>
+         </span>`).join("")}
+      </div>
+      <div class="wiz-bar"><i style="width:${step===1?50:100}%"></i></div>`;
+    if(step===1){
+      const rep = a.reporterNeeded ? `
+        <div class="fld-l">🎤 ${esc(t("kind_reporter"))} <span class="req-star">*</span></div>
+        <div class="chips">${ROSTER.reporters.map(n=>pill("reporter",n,draft.reporter)).join("")}</div>`:"";
+      const jour = a.journalistNeeded ? `
+        <div class="fld-l" style="margin-top:14px">📰 ${esc(t("f_journalist"))} <span class="req-star">*</span></div>
+        <div class="chips">${ROSTER.journalists.map(n=>pill("journalist",n,draft.journalist)).join("")}</div>`:"";
+      const named = rq.assign.heba ? `
+        <div class="small" style="color:var(--assign);font-weight:700;margin-top:14px" dir="auto">✔ ${esc(t("already_assigned"))}: ${esc(t("f_heba"))}</div>`:"";
+      body.innerHTML=head+`
+        <div class="small muted" style="margin-bottom:14px">${esc(t("journal_pick"))}</div>
+        ${rep}${jour}${named}
+        <div class="modal-f">
+          <button class="btn" id="jrClose">${esc(t("cancel"))}</button>
+          <button class="btn good" id="jrNext" ${complete()?"":"disabled"}>${esc(t("asg_next"))} ›</button>
+        </div>
+        ${complete()?"":`<div class="small muted" style="margin-top:8px">${esc(t("jr_pick_all"))}</div>`}`;
+    }else{
+      body.innerHTML=head+`
+        <div class="fld-l">🗓️ ${esc(t("asg_order"))}</div>
+        <div class="small muted" style="margin-bottom:9px">${esc(t("jr_order_hint"))}</div>
+        ${orderList()}
+        <div class="fld-l" style="margin-top:16px">${esc(t("asg_preview"))}</div>
+        ${timelinePreview()}
+        <div class="modal-f">
+          <button class="btn" id="jrBack">‹ ${esc(t("asg_back"))}</button>
+          <button class="btn good" id="jrOk">${esc(t("confirm_reporter"))}</button>
+        </div>`;
+    }
+    bind();
+  }
+  function bind(){
+    body.querySelectorAll("[data-jp]").forEach(el=>el.onclick=()=>{
+      const [k,n]=el.dataset.jp.split("|");
+      draft[k]=(draft[k]===n?null:n);          /* single-select toggle */
+      draw();
+    });
+    body.querySelectorAll("[data-mv]").forEach(el=>el.onclick=()=>{
+      const [iS,dS]=el.dataset.mv.split("|"); const i=+iS, j=i+ +dS;
+      if(j<0||j>=draft.seq.length) return;
+      [draft.seq[i],draft.seq[j]]=[draft.seq[j],draft.seq[i]]; draw();
+    });
+    /* pointer-based reorder — same approach as the Head's modal (works on touch) */
+    body.querySelectorAll(".seq-row[data-i]").forEach(el=>{
+      const grip=el.querySelector(".seq-grip"); if(!grip) return;
+      grip.onpointerdown=e=>{
+        e.preventDefault(); el.classList.add("dragging");
+        try{ grip.setPointerCapture(e.pointerId); }catch(_){}
+        const onMove=ev=>{
+          const pt=document.elementFromPoint(ev.clientX,ev.clientY);
+          const over=pt&&pt.closest?pt.closest(".seq-row[data-i]"):null;
+          if(!over||over===el||over.parentNode!==el.parentNode) return;
+          const r=over.getBoundingClientRect();
+          const after=ev.clientY > r.top + r.height/2;
+          over.parentNode.insertBefore(el, after?over.nextSibling:over);
+        };
+        const onUp=()=>{
+          window.removeEventListener("pointermove",onMove);
+          window.removeEventListener("pointerup",onUp);
+          window.removeEventListener("pointercancel",onUp);
+          el.classList.remove("dragging");
+          draft.seq=[...body.querySelectorAll(".seq-row[data-name]")].map(r=>r.dataset.name);
+          draw();
+        };
+        window.addEventListener("pointermove",onMove);
+        window.addEventListener("pointerup",onUp);
+        window.addEventListener("pointercancel",onUp);
+      };
+    });
+    const x=body.querySelector("#jrX"); if(x) x.onclick=close;
+    const c=body.querySelector("#jrClose"); if(c) c.onclick=close;
+    const nx=body.querySelector("#jrNext"); if(nx) nx.onclick=()=>{ if(complete()){ step=2; draw(); } };
+    const bk=body.querySelector("#jrBack"); if(bk) bk.onclick=()=>{ step=1; draw(); };
+    const ok=body.querySelector("#jrOk");
+    if(ok) ok.onclick=()=>{
+      if(!complete()) return;
+      rq.assign.reporter=draft.reporter;
+      rq.assign.journalist=draft.journalist;
+      rq.assign.edSeq=[...draft.seq];
+      rq.assign.reporterChosen=true;
+      const order = draft.seq.length ? (" · "+t("asg_order")+": "+draft.seq.map((n,i)=>`${i+1}. ${n}`).join(" → ")) : "";
+      const staffEn=[draft.reporter&&("Reporter/presenter: "+draft.reporter),draft.journalist&&("Journalist: "+draft.journalist),rq.assign.heba&&"Heba"].filter(Boolean).join(", ");
+      const staffAr=[draft.reporter&&("المراسل/المقدّم: "+draft.reporter),draft.journalist&&("الصحفي: "+draft.journalist),rq.assign.heba&&"هبة"].filter(Boolean).join("، ");
+      addTl(rq,"Selected "+staffEn+". The complete team is active and production started."+order,
+               "تم اختيار "+staffAr+". الفريق مكتمل وبدأ الإنتاج."+order);
+      rq.status="in_progress";
+      notifyOwners(rq,"The complete team is assigned — production has started.","تم تعيين الفريق بالكامل — بدأ الإنتاج.");
+      toast(state.lang==="ar"?"تم اختيار الطاقم التحريري":"Editorial staff selected","good");
+      close(); save(); render();
     };
   }
   draw();
