@@ -990,6 +990,8 @@ const DICT = {
   trk_place_sh:   {en:"On location · Shooting", ar:"في الموقع · التصوير"},
   trk_place_ed:   {en:"In-house · Editing", ar:"داخل المؤسسة · المونتاج"},
   trk_count:      {en:"completed", ar:"اكتملوا"},
+  trk_pending_ed: {en:"The Editorial Manager is still selecting the editorial staff — they will be added to this order.",
+                   ar:"لا يزال مسؤول المحررين يختار الطاقم التحريري — سيُضافون إلى هذا الترتيب."},
   field_inprog:   {en:"Working now", ar:"قيد العمل الآن"},
   field_done:     {en:"Work completed", ar:"اكتمل العمل"},
   field_dur:      {en:"Duration", ar:"المدة"},
@@ -2531,13 +2533,17 @@ function guideRail(rq,r){
 /* ---------- detail rail: assigned team ---------- */
 function teamRail(rq){
   const a=rq.assign;
-  const line=(label,arr,icon)=>arr.length?`<div class="tr-row">
+  /* numbers come from the SAME order as the work-tracking list, so the card and the
+     list can never disagree about who goes first */
+  const order=trackedMembers(rq);
+  const num=n=>{ const i=order.indexOf(n); return i<0 ? "" : `${i+1}. `; };
+  const line=(label,arr,icon,disp)=>arr.length?`<div class="tr-row">
       <span class="tr-k">${icon} ${esc(label)}</span>
-      <span class="tr-v" dir="auto">${arr.map((n,i)=>`${arr.length>1?(i+1)+". ":""}${esc(n)}`).join("<br>")}</span>
+      <span class="tr-v" dir="auto">${arr.map(n=>`${num(n)}${esc(disp?disp(n):n)}`).join("<br>")}</span>
     </div>`:"";
   const ed=[...repList(a),...jourList(a),a.heba].filter(Boolean);
   const body = line(t("shooters"),a.shooting,"📹")+line(t("editors"),a.editors,"✂️")+
-               line(t("editorial_cov"),ed.map(n=>n==="Heba"?t("f_heba"):n),"🎤");
+               line(t("editorial_cov"),ed,"🎤",n=>n==="Heba"?t("f_heba"):n);
   if(!body) return "";
   return `<div class="card rail-card">
     <div class="rail-h">${esc(t("team_members"))}</div>
@@ -2731,7 +2737,11 @@ function fieldPanel(rq, r){
   const members=trackedMembers(rq);
   if(!members.length) return "";
   const recs=rq.field||{};
-  if(!TRACK_STAGES.includes(rq.status) && !Object.keys(recs).length) return "";
+  /* the work order appears as soon as the team is set — not only during the stages
+     where people actually clock in. At these two statuses nobody can stamp yet, so
+     every row reads "waiting for this stage" and carries no button. */
+  const PRE_TRACK=["journal_selection","in_progress"];
+  if(!TRACK_STAGES.includes(rq.status) && !PRE_TRACK.includes(rq.status) && !Object.keys(recs).length) return "";
   const stamp=(labelKey,p)=> p ? `<div class="fl-line">
       <span class="fl-k">${esc(t(labelKey))}</span>
       <span class="fl-v" dir="auto">${esc(fmtDate(p.time))}</span>
@@ -2791,9 +2801,14 @@ function fieldPanel(rq, r){
       ${rows}
     </div>`;
   }).join("");
+  /* the technical teams are known but the editorial people aren't picked yet —
+     say so, so a short list doesn't read as the final team */
+  const pendingEd = (needsEditorial(rq) && !editorialComplete(rq))
+    ? `<div class="note">${esc(t("trk_pending_ed"))}</div>` : "";
   return `<div class="section">
     <h2>🛰️ ${esc(t("field_h"))}</h2>
     <div class="note">${esc(t("field_note"))}</div>
+    ${pendingEd}
     <div id="fieldMsg" class="small muted" style="margin-top:8px;display:none"></div>
     ${groups}
   </div>`;
