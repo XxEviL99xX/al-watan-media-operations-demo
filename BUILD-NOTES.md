@@ -1,9 +1,10 @@
 # Media Operations demo — build notes
 
-**Cloned from** `demos/workflow-demo` (v6 baseline, commit `65d93da`) on 2026-07-22.
-**Remote:** none. `git remote -v` is empty on purpose so this can never push to the
-live `al-watan-media-workflow-demo` Pages site. History is intact — `git diff` shows
-every change against the v6 baseline.
+**Cloned from** the v6 demo (baseline commit `65d93da`) on 2026-07-22. That v6 demo is now
+archived at `demos/_archive/workflow-demo/` — do not edit it.
+**Remote:** ⚠️ **`origin` → `XxEviL99xX/al-watan-media-operations-demo` (PUBLIC).**
+**Pushing to it publishes the live site**, https://xxevil99xx.github.io/al-watan-media-operations-demo/ .
+(An earlier version of this note said the remote was empty. It is not — correct as of 2026-07-23.)
 **Storage key:** `watan_mediaops_v7` (its own, so it never inherits v6 localStorage).
 
 Single self-contained file: `index.html`. No build step. Open it directly.
@@ -133,16 +134,29 @@ never sees internal people or review groups.
 
 ---
 
+## ✅ CLOSED since this note was first written (2026-07-23)
+
+1. ~~**Who closes Preparation.**~~ **Answered by the user:** Preparation shows a single
+   **▶ بدء العمل**, and pressing it advances Preparation → Shooting *and* stamps the
+   presser's location in the same click (commits `db26a2c`, `c71ba33`).
+2. ~~**Who presses نشر.**~~ **Answered by Ahmed:** the `media_manager` role. The
+   `publisher` placeholder account **"جهة النشر (قيد التأكيد)" was deleted** and نشر was
+   folded into the **Production Head** (commit `e8ded0f`). The "Publishing Officer /
+   مسؤول النشر" (`aabdulla`) collision is resolved — he stays a stage-2 *reviewer* and
+   has nothing to do with publishing.
+   ⚠️ **One thing still to confirm with Ahmed:** which human role `media_manager` maps
+   to. Working assumption = **Production Head** (built that way). If he says Marketing
+   Manager, it is a one-line owner/gate swap.
+
 ## ⚠️ Still OPEN — needs Ahmed
 
-1. **Who closes Preparation.** Deleting `إنهاء المرحلة` (T4) leaves nothing to move
-   Preparation → Shooting. Blueprint §912 flags this. A single explicit action is a
-   placeholder — no rule was invented.
-2. **Who presses نشر.** Built with a `publisher` placeholder named
-   **"جهة النشر (قيد التأكيد)"**. ⚠️ Note the collision found while building: the
-   review panel *already* contains a **"Publishing Officer / مسؤول النشر"**
-   (`aabdulla`, Editorial & Publishing stage). They may be the same person — that is
-   itself a question for Ahmed.
+1. **At التصوير, who belongs in the بانتظار list?** It currently shows the shooting crew
+   **plus** the editorial staff (مراسل / صحفي / هبة), per the rule that they are present
+   at the shoot. The user said "I should only go to فريق التصوير" but no change was made
+   — narrowing it is a workflow-rule change, so **ask before changing**.
+2. **Does the client keep a final-change round after approving?** The demo says no —
+   approval is a clean handover (see T6 revision above). That reverses an earlier
+   confirmed decision, so it is worth putting back in front of Ahmed.
 
 ## Not done yet
 
