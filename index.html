@@ -2305,7 +2305,7 @@ function viewList(){
       const isTerm = ["published","cancelled"].includes(rq.status);
       const crFlag = (!isTerm&&rq.changeReq&&r!=="client") ? `<span class="actionflag">🔁 ${esc(t("cr_flag"))}</span>` : "";
       const flag = (!isTerm&&(isOwner(rq,r)||(r==="marketing"&&rq.changeReq))) ? `<span class="actionflag">⚡ ${esc(t("action_needed"))}</span>` : "";
-      const quickButtons = !isTerm&&isOwner(rq,r) ? actionButtons(rq,r).replaceAll("data-act=","data-quick-act=") : "";
+      const quickButtons = !isTerm&&isOwner(rq,r) ? actionButtons(rq,r,{quick:true}).replaceAll("data-act=","data-quick-act=") : "";
       const quickActions = quickButtons ? `<div class="quick-actions" data-quick-wrap>${quickButtons}</div>` : "";
       /* one calm row: identity → status → actions. The ⚡ flag is a small dot on the
          status chip rather than a second badge, so nothing stacks. */
@@ -2607,8 +2607,10 @@ function renderActionPanel(rq, r){
   return `<div class="section">${inner}</div>`;
 }
 
-function actionButtons(rq, r){
-  const s=rq.status; const B=[];
+/* opts.quick = rendering into a queue row rather than the detail page. Starting work
+   belongs inside the request (see the in_progress branch below). */
+function actionButtons(rq, r, opts){
+  const s=rq.status; const B=[]; const quick=!!(opts&&opts.quick);
   const b=(act,label,cls)=>`<button class="btn ${cls||""}" data-act="${act}">${esc(t(label))}</button>`;
 
   /* BUG FIX: while a change request is pending Marketing's decision the request is
@@ -2641,8 +2643,12 @@ function actionButtons(rq, r){
      There, ⏹ إنهاء العمل both stops tracking and — once the LAST required member has
      finished — advances the workflow automatically. See finishStageIfDone().
      in_progress has no per-person tracking, so it keeps one explicit action.
-     ⚠️ OPEN (blueprint §912): Ahmed must confirm who/what closes Preparation. */
-  if(isStaff(r) && isOwner(rq,r) && s==="in_progress"){
+     ⚠️ OPEN (blueprint §912): Ahmed must confirm who/what closes Preparation.
+     Starting work is DETAIL-PAGE ONLY (`quick` skips it): from the queue it read as a
+     one-click action but then handed the person to the tracking panel, so the same
+     button appeared to be pressed twice. Inside the request it is one ▶ بدء العمل
+     followed by ⏹ إنهاء العمل, which is the whole story of the stage. */
+  if(isStaff(r) && isOwner(rq,r) && s==="in_progress" && !quick){
     B.push(b("tm_done","prep_done","primary"));
   }
   /* A reviewer keeps Approve/Request-changes until THEY personally act — even if a
