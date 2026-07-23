@@ -882,7 +882,8 @@ const DICT = {
   confirm_reporter:{en:"Confirm selection & start production", ar:"تأكيد الاختيار وبدء الإنتاج"},
   select_staff:   {en:"Select staff", ar:"اختيار الطاقم"},
   jr_order_hint:  {en:"Drag, or use ▲▼, to set who leads.", ar:"اسحب أو استخدم ▲▼ لتحديد من يبدأ."},
-  jr_pick_all:    {en:"Pick a person for each requested editorial role to continue.", ar:"اختر شخصًا لكل دور تحريري مطلوب للمتابعة."},
+  jr_pick_all:    {en:"Pick at least one person for each requested editorial role to continue.", ar:"اختر شخصًا واحدًا على الأقل لكل دور تحريري مطلوب للمتابعة."},
+  jr_multi:       {en:"You may select more than one.", ar:"يمكن اختيار أكثر من شخص."},
 
   /* revision routing */
   routing_h:      {en:"Revision routing — pick the restart stage", ar:"توجيه التعديلات — اختر مرحلة الاستئناف"},
@@ -1263,7 +1264,7 @@ function seed(){
     contact:"", phone:"", phone2:"", email:"", eventDate:"", eventDateTime:"",
     coverage:"comprehensive", eventType:"editorial",
     locationText:"", locationLat:null, locationLng:null, attachments:[], notes:"",
-    assign:{producers:[],shooting:[],editors:[],reporterNeeded:false,journalistNeeded:false,hebaNeeded:false,reporterChosen:false,reporter:null,journalist:null,heba:null},
+    assign:{producers:[],shooting:[],editors:[],reporterNeeded:false,journalistNeeded:false,hebaNeeded:false,reporterChosen:false,reporter:[],journalist:[],heba:null},
     /* g1/g2 = stage satisfied (≥1 approval); g1By/g2By = reviewer ids who approved that stage
        (a list, since either/both reviewers in a stage may approve — one is enough to satisfy it) */
     g1:false, g2:false, g1By:[], g2By:[], clientLink:null, comments:[], timeline:[],
@@ -1277,7 +1278,7 @@ function seed(){
       due:"2026-08-05", locationText:"Sakhir Air Base, Bahrain", locationLat:26.0, locationLng:50.62,
       notes:"Full opening-day coverage: aerial displays, VIP arrivals, 90-sec highlight reel + social cuts.",
       requester:"requester", status:"internal_review", created:now-86400000*4,
-      assign:{producers:[],shooting:["Rashid Al Saleh"],editors:["Mohammed Khalid"],reporterNeeded:true,journalistNeeded:false,reporterChosen:true,reporter:"Fatima Noor",journalist:null},
+      assign:{producers:[],shooting:["Rashid Al Saleh"],editors:["Mohammed Khalid"],reporterNeeded:true,journalistNeeded:false,reporterChosen:true,reporter:["Fatima Noor"],journalist:[]},
       g1:true, g2:false, g1By:["rev_direction"], g2By:[],
       /* field crew already shot this one — start/finish with date, time & location */
       field:{
@@ -1302,7 +1303,7 @@ function seed(){
       due:"2026-08-12", locationText:"Batelco HQ, Hamala", locationLat:26.166, locationLng:50.49,
       notes:"30-sec festive promo, Arabic VO, brand colors, 3 platform aspect ratios.",
       requester:"requester", status:"editing", created:now-86400000*2,
-      assign:{producers:[],shooting:["Noor Al Hassan"],editors:["Layla Omar"],reporterNeeded:false,journalistNeeded:false,reporterChosen:false,reporter:null,journalist:null},
+      assign:{producers:[],shooting:["Noor Al Hassan"],editors:["Layla Omar"],reporterNeeded:false,journalistNeeded:false,reporterChosen:false,reporter:[],journalist:[]},
       field:{ "Noor Al Hassan":{start:{time:now-3600000*9, lat:26.16612, lng:50.49043, acc:9, sim:false},
                                 end:  {time:now-3600000*5, lat:26.16598, lng:50.49071, acc:11, sim:false}} },
       timeline:[
@@ -1375,8 +1376,11 @@ function migrateSavedWorkflow(saved){
     /* v6 task 6: field tracking store (start/finish with location) */
     if(!rq.field || typeof rq.field!=="object"){ rq.field={}; changed=true; }
     const assign=rq.assign;
-    if(assign && assign.journalist===undefined){ assign.journalist=null; changed=true; }
+    if(assign && assign.journalist===undefined){ assign.journalist=[]; changed=true; }
     if(assign && assign.journalistNeeded===undefined){ assign.journalistNeeded=false; changed=true; }
+    /* reporter/journalist became LISTS (a job can need two) — normalise old single values */
+    if(assign && !Array.isArray(assign.reporter)){ assign.reporter=asList(assign.reporter); changed=true; }
+    if(assign && !Array.isArray(assign.journalist)){ assign.journalist=asList(assign.journalist); changed=true; }
     if(assign && assign.heba===undefined){ assign.heba=null; changed=true; }
     /* Heba is now one specific person — remap any earlier placeholder names */
     if(assign && assign.heba && assign.heba!=="Heba"){ assign.heba="Heba"; changed=true; }
@@ -1384,7 +1388,7 @@ function migrateSavedWorkflow(saved){
     if(assign && !Array.isArray(assign.shooting)){ assign.shooting=[]; changed=true; }
     /* v6: producers removed from the workflow — clear them from old saves */
     if(assign && Array.isArray(assign.producers) && assign.producers.length){ assign.producers=[]; changed=true; }
-    const teamWasAlreadyComplete=assign&&assign.reporterChosen&&assign.reporter&&assign.producers?.length&&assign.editors?.length;
+    const teamWasAlreadyComplete=assign&&assign.reporterChosen&&repList(assign).length&&assign.producers?.length&&assign.editors?.length;
     if(rq.status==="assign_team"&&teamWasAlreadyComplete){
       rq.status="in_progress";
       rq.timeline=rq.timeline||[];
@@ -1458,17 +1462,23 @@ function reqById(id){ return state.requests.find(r=>r.id===id); }
    Mixed case: a named person + a generic role still goes to the Editorial Manager, but
    only to resolve the generic one — the named person is never re-picked. */
 function needsEditorial(req){ return !!(req && req.assign && (req.assign.reporterNeeded || req.assign.journalistNeeded)); }
-/* every GENERIC editorial role has a person picked (named people need no picking) */
+/* assign.reporter / assign.journalist are LISTS — a job may need two reporters or two
+   journalists. Old saves (and the first seeds) held a single name or null, so every
+   read goes through these instead of touching the property directly. */
+function asList(v){ return v==null ? [] : (Array.isArray(v) ? v.filter(Boolean) : [v]); }
+function repList(a){ return asList(a && a.reporter); }
+function jourList(a){ return asList(a && a.journalist); }
+/* every GENERIC editorial role has at least one person picked (named people need no picking) */
 function editorialComplete(req){
   const a=req&&req.assign; if(!a) return true;
-  return (!a.reporterNeeded || !!a.reporter) && (!a.journalistNeeded || !!a.journalist);
+  return (!a.reporterNeeded || repList(a).length>0) && (!a.journalistNeeded || jourList(a).length>0);
 }
 /* chosen editorial people as "Role: Name" parts */
 function editorialStaffParts(rq){
-  const parts=[];
-  if(rq.assign.reporter)   parts.push(`${t("kind_reporter")}: ${rq.assign.reporter}`);
-  if(rq.assign.journalist) parts.push(`${t("f_journalist")}: ${rq.assign.journalist}`);
-  if(rq.assign.heba)       parts.push(t("f_heba")); /* Heba IS the person — no "role: name" pair */
+  const parts=[], a=rq.assign;
+  if(repList(a).length)  parts.push(`${t("kind_reporter")}: ${repList(a).join("، ")}`);
+  if(jourList(a).length) parts.push(`${t("f_journalist")}: ${jourList(a).join("، ")}`);
+  if(a.heba)             parts.push(t("f_heba")); /* Heba IS the person — no "role: name" pair */
   return parts;
 }
 /* ---------- work tracking (start / finish with date, time & location) ---------- */
@@ -1477,7 +1487,7 @@ function editorialStaffParts(rq){
 const TRACK_STAGES=["shooting","editing"];
 function stageMembers(rq, status){
   const a=(rq&&rq.assign)||{};
-  if(status==="shooting") return [...(a.shooting||[]), a.reporter, a.journalist, a.heba].filter(Boolean);
+  if(status==="shooting") return [...(a.shooting||[]), ...repList(a), ...jourList(a), a.heba].filter(Boolean);
   if(status==="editing")  return [...(a.editors||[])];
   return [];
 }
@@ -1613,8 +1623,8 @@ function isOwner(req, uid){
   if(k==="producer") return req.assign.producers.includes(uid);
   if(k==="shooter")  return req.assign.shooting.includes(uid);
   if(k==="editor")   return req.assign.editors.includes(uid);
-  if(k==="reporter") return req.assign.reporter===uid;
-  if(k==="journalist") return req.assign.journalist===uid;
+  if(k==="reporter") return repList(req.assign).includes(uid);
+  if(k==="journalist") return jourList(req.assign).includes(uid);
   if(k==="heba") return req.assign.heba===uid;
   return true; // org roles
 }
@@ -1625,8 +1635,8 @@ function ownersOf(req){
     if(k==="producer") out.push(...req.assign.producers);
     else if(k==="shooter") out.push(...req.assign.shooting);
     else if(k==="editor") out.push(...req.assign.editors);
-    else if(k==="reporter"){ if(req.assign.reporter) out.push(req.assign.reporter); }
-    else if(k==="journalist"){ if(req.assign.journalist) out.push(req.assign.journalist); }
+    else if(k==="reporter") out.push(...repList(req.assign));
+    else if(k==="journalist") out.push(...jourList(req.assign));
     else if(k==="heba"){ if(req.assign.heba) out.push(req.assign.heba); }
     else if(k==="review1"){ if(!req.g1) out.push(...reviewersOfStage("review1")); }
     else if(k==="review2"){ if(!req.g2) out.push(...reviewersOfStage("review2")); }
@@ -2167,8 +2177,8 @@ function bindNew(){
       rq.assign.reporterNeeded=reporterNeeded;
       rq.assign.journalistNeeded=journalistNeeded;
       rq.assign.hebaNeeded=hebaNeeded;
-      if(!reporterNeeded) rq.assign.reporter=null;
-      if(!journalistNeeded) rq.assign.journalist=null;
+      if(!reporterNeeded) rq.assign.reporter=[];
+      if(!journalistNeeded) rq.assign.journalist=[];
       /* v7/T3: named person is assigned/unassigned directly, never via the Editorial Manager */
       rq.assign.heba = hebaNeeded ? "Heba" : null;
       rq.assign.reporterChosen = needsEditorial(rq) && editorialComplete(rq);
@@ -2189,7 +2199,7 @@ function bindNew(){
     const r=Object.assign({ id:state.seq++, requester:"requester", status:"marketing_approval", created:Date.now(),
       attachments:files,
       /* v7/T3: a named person is assigned the moment the requester picks them */
-      assign:{producers:[],shooting:[],editors:[],reporterNeeded,journalistNeeded,hebaNeeded,reporterChosen:false,reporter:null,journalist:null,heba:hebaNeeded?"Heba":null},
+      assign:{producers:[],shooting:[],editors:[],reporterNeeded,journalistNeeded,hebaNeeded,reporterChosen:false,reporter:[],journalist:[],heba:hebaNeeded?"Heba":null},
       g1:false,g2:false,g1By:[],g2By:[],clientLink:null,comments:[],field:{},
       timeline:[tl("requester","Submitted the request.","قدّم الطلب.")] }, fields);
     state.requests.push(r);
@@ -2268,7 +2278,7 @@ function viewList(){
      The client keeps published/cancelled as read-only history. */
   if(r==="client") base=base.filter(x=>["client_version","published","cancelled"].includes(x.status));
   // staff see only requests they are assigned to
-  if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.shooting.includes(r)||x.assign.editors.includes(r)||x.assign.reporter===r||x.assign.journalist===r||x.assign.heba===r);
+  if(isStaff(r)) base=base.filter(x=>x.assign.producers.includes(r)||x.assign.shooting.includes(r)||x.assign.editors.includes(r)||repList(x.assign).includes(r)||jourList(x.assign).includes(r)||x.assign.heba===r);
 
   /* one page, one filter row — Archive and Cancelled are filters, never nav tabs */
   const test=k=> k==="mine" ? (rq=>isOwner(rq,r)||(r==="marketing"&&rq.changeReq)) : (FILTERS[k]||FILTERS.all);
@@ -2421,7 +2431,7 @@ function viewDetail(){
 
   // summary card (reused everywhere)
   let assignLine="";
-  if(!clientView && (rq.assign.producers.length||rq.assign.shooting.length||rq.assign.editors.length||rq.assign.reporter||rq.assign.journalist)){
+  if(!clientView && (rq.assign.producers.length||rq.assign.shooting.length||rq.assign.editors.length||repList(rq.assign).length||jourList(rq.assign).length)){
     const parts=[];
     if(rq.assign.producers.length) parts.push(`${t("producers")}: ${rq.assign.producers.join(", ")}`);
     if(rq.assign.shooting.length)  parts.push(`${t("shooters")}: ${rq.assign.shooting.join(", ")}`);
@@ -2525,7 +2535,7 @@ function teamRail(rq){
       <span class="tr-k">${icon} ${esc(label)}</span>
       <span class="tr-v" dir="auto">${arr.map((n,i)=>`${arr.length>1?(i+1)+". ":""}${esc(n)}`).join("<br>")}</span>
     </div>`:"";
-  const ed=[a.reporter,a.journalist,a.heba].filter(Boolean);
+  const ed=[...repList(a),...jourList(a),a.heba].filter(Boolean);
   const body = line(t("shooters"),a.shooting,"📹")+line(t("editors"),a.editors,"✂️")+
                line(t("editorial_cov"),ed.map(n=>n==="Heba"?t("f_heba"):n),"🎤");
   if(!body) return "";
@@ -2887,8 +2897,8 @@ function bindDetail(){
       rq.assign.reporterNeeded=cr.flags.reporterNeeded;
       rq.assign.journalistNeeded=cr.flags.journalistNeeded;
       rq.assign.hebaNeeded=cr.flags.hebaNeeded;
-      if(!cr.flags.reporterNeeded) rq.assign.reporter=null;
-      if(!cr.flags.journalistNeeded) rq.assign.journalist=null;
+      if(!cr.flags.reporterNeeded) rq.assign.reporter=[];
+      if(!cr.flags.journalistNeeded) rq.assign.journalist=[];
       if(!cr.flags.hebaNeeded) rq.assign.heba=null;
       rq.assign.reporterChosen = needsEditorial(rq) && editorialComplete(rq);
       rq.timeline.push(Object.assign(
@@ -3181,7 +3191,7 @@ function askAssign(rq){
      timeline Ahmed asked for, and it is what gets written to the audit trail. */
   function orderList(){
     if(!draft.seq.length) return `<div class="small muted">${esc(t("asg_pick_first"))}</div>`;
-    const ed=[rq.assign.reporter, rq.assign.journalist, rq.assign.heba].filter(Boolean);
+    const ed=[...repList(rq.assign),...jourList(rq.assign), rq.assign.heba].filter(Boolean);
     return `<div class="seq">
       ${draft.seq.map((n,i)=>`
         <div class="seq-row" data-i="${i}" data-name="${esc(n)}">
@@ -3329,11 +3339,12 @@ function askAssign(rq){
 /* ---------- Editorial-staff modal (Editorial Manager) ----------
    Same pattern as the Head's Assign modal: opens from the queue row or the detail
    page, pick the people (step 1), set their lead order by drag / ▲▼ (step 2), then
-   confirm. Reporter and journalist are SINGLE-select; a named person (Heba) chosen by
-   the requester is shown read-only and never re-picked here (v7/T3). */
+   confirm. Both roles are MULTI-select — a job may need two reporters or two
+   journalists. A named person (Heba) chosen by the requester is never re-picked
+   here (v7/T3); she is already assigned, so the picker stays silent about her. */
 function askJournal(rq){
   const a=rq.assign;
-  const draft={reporter:a.reporter, journalist:a.journalist, seq:[]};
+  const draft={reporter:[...repList(a)], journalist:[...jourList(a)], seq:[]};
   let step=1;
   const ov=document.createElement("div"); ov.className="modal-ov";
   ov.innerHTML=`<div class="modal modal-lg"><div id="jrBody"></div></div>`;
@@ -3342,16 +3353,16 @@ function askJournal(rq){
   ov.onclick=e=>{ if(e.target===ov) close(); };
   const body=ov.querySelector("#jrBody");
 
-  const picked=()=>[draft.reporter, draft.journalist].filter(Boolean);
-  const complete=()=> (!a.reporterNeeded || draft.reporter) && (!a.journalistNeeded || draft.journalist);
+  const picked=()=>[...draft.reporter, ...draft.journalist];
+  const complete=()=> (!a.reporterNeeded || draft.reporter.length>0) && (!a.journalistNeeded || draft.journalist.length>0);
   function syncSeq(){
     const p=picked();
     draft.seq=draft.seq.filter(n=>p.includes(n));
     p.forEach(n=>{ if(!draft.seq.includes(n)) draft.seq.push(n); });
   }
   function kindLabelOf(n){ const k=STAFF[n]; return KIND_LABEL[k]?KIND_LABEL[k][state.lang]:""; }
-  function pill(kind,name,cur){
-    return `<span class="chip ${cur===name?"sel":""}" data-jp="${kind}|${esc(name)}">${esc(name)}</span>`;
+  function pill(kind,name,list){
+    return `<span class="chip ${list.includes(name)?"sel":""}" data-jp="${kind}|${esc(name)}">${esc(name)}</span>`;
   }
   function orderList(){
     if(!draft.seq.length) return `<div class="small muted">${esc(t("asg_pick_first"))}</div>`;
@@ -3399,12 +3410,14 @@ function askJournal(rq){
     if(step===1){
       const rep = a.reporterNeeded ? `
         <div class="fld-l">🎤 ${esc(t("kind_reporter"))} <span class="req-star">*</span></div>
-        <div class="chips">${ROSTER.reporters.map(n=>pill("reporter",n,draft.reporter)).join("")}</div>`:"";
+        <div class="chips">${ROSTER.reporters.map(n=>pill("reporter",n,draft.reporter)).join("")}</div>
+        <div class="small muted" style="margin-top:5px">${esc(t("jr_multi"))}</div>`:"";
       const jour = a.journalistNeeded ? `
         <div class="fld-l" style="margin-top:14px">📰 ${esc(t("f_journalist"))} <span class="req-star">*</span></div>
-        <div class="chips">${ROSTER.journalists.map(n=>pill("journalist",n,draft.journalist)).join("")}</div>`:"";
-      const named = rq.assign.heba ? `
-        <div class="small" style="color:var(--assign);font-weight:700;margin-top:14px" dir="auto">✔ ${esc(t("already_assigned"))}: ${esc(t("f_heba"))}</div>`:"";
+        <div class="chips">${ROSTER.journalists.map(n=>pill("journalist",n,draft.journalist)).join("")}</div>
+        <div class="small muted" style="margin-top:5px">${esc(t("jr_multi"))}</div>`:"";
+      /* a named person needs no mention here — she was never a choice to make */
+      const named = "";
       body.innerHTML=head+`
         <div class="small muted" style="margin-bottom:14px">${esc(t("journal_pick"))}</div>
         ${rep}${jour}${named}
@@ -3430,7 +3443,8 @@ function askJournal(rq){
   function bind(){
     body.querySelectorAll("[data-jp]").forEach(el=>el.onclick=()=>{
       const [k,n]=el.dataset.jp.split("|");
-      draft[k]=(draft[k]===n?null:n);          /* single-select toggle */
+      const i=draft[k].indexOf(n);
+      if(i<0) draft[k].push(n); else draft[k].splice(i,1);   /* multi-select toggle */
       draw();
     });
     body.querySelectorAll("[data-mv]").forEach(el=>el.onclick=()=>{
@@ -3472,13 +3486,14 @@ function askJournal(rq){
     const ok=body.querySelector("#jrOk");
     if(ok) ok.onclick=()=>{
       if(!complete()) return;
-      rq.assign.reporter=draft.reporter;
-      rq.assign.journalist=draft.journalist;
+      /* keep each role list in the lead order the manager just set */
+      rq.assign.reporter  =draft.seq.filter(n=>draft.reporter.includes(n));
+      rq.assign.journalist=draft.seq.filter(n=>draft.journalist.includes(n));
       rq.assign.edSeq=[...draft.seq];
       rq.assign.reporterChosen=true;
       const order = draft.seq.length ? (" · "+t("asg_order")+": "+draft.seq.map((n,i)=>`${i+1}. ${n}`).join(" → ")) : "";
-      const staffEn=[draft.reporter&&("Reporter/presenter: "+draft.reporter),draft.journalist&&("Journalist: "+draft.journalist),rq.assign.heba&&"Heba"].filter(Boolean).join(", ");
-      const staffAr=[draft.reporter&&("المراسل/المقدّم: "+draft.reporter),draft.journalist&&("الصحفي: "+draft.journalist),rq.assign.heba&&"هبة"].filter(Boolean).join("، ");
+      const staffEn=[draft.reporter.length&&("Reporter/presenter: "+draft.reporter.join(", ")),draft.journalist.length&&("Journalist: "+draft.journalist.join(", ")),rq.assign.heba&&"Heba"].filter(Boolean).join(", ");
+      const staffAr=[draft.reporter.length&&("المراسل/المقدّم: "+draft.reporter.join("، ")),draft.journalist.length&&("الصحفي: "+draft.journalist.join("، ")),rq.assign.heba&&"هبة"].filter(Boolean).join("، ");
       addTl(rq,"Selected "+staffEn+". The complete team is active and production started."+order,
                "تم اختيار "+staffAr+". الفريق مكتمل وبدأ الإنتاج."+order);
       rq.status="in_progress";
