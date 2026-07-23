@@ -1034,10 +1034,15 @@ const ROLE_LABEL = {
    stage can approve; both stages must approve one-each for the video to reach the
    client. Titles are the roles Ahmed named; emails are the real review accounts. */
 const REVIEWERS = {
-  rev_direction: {stage:"review1", en:"Direction Manager",  ar:"مدير الإخراج",  email:"nnasser@alwatannews.net",     user:"nnasser"},
-  rev_production:{stage:"review1", en:"Production Officer",  ar:"مسؤول الإنتاج", email:"m.nazeeh@alwatannews.net",    user:"m.nazeeh"},
-  rev_editorial: {stage:"review2", en:"Editorial Officer",  ar:"مسؤول التحرير", email:"zalmushaigri@alwatannews.net", user:"zalmushaigri"},
-  rev_publishing:{stage:"review2", en:"Publishing Officer", ar:"مسؤول النشر",   email:"aabdulla@alwatannews.net",    user:"aabdulla"},
+  /* ⚠️ DEMO ACCOUNTS ONLY. This repository is PUBLIC so GitHub Pages can serve the
+     demo, which means everything here is world-readable and indexable. The four real
+     reviewer addresses were replaced with example.com placeholders on 2026-07-23.
+     Do NOT put real staff emails back in this file — map roles to real people in the
+     private spec instead. */
+  rev_direction: {stage:"review1", en:"Direction Manager",  ar:"مدير الإخراج",  email:"direction@example.com",  user:"direction"},
+  rev_production:{stage:"review1", en:"Production Officer",  ar:"مسؤول الإنتاج", email:"production@example.com", user:"production"},
+  rev_editorial: {stage:"review2", en:"Editorial Officer",  ar:"مسؤول التحرير", email:"editorial@example.com",  user:"editorial"},
+  rev_publishing:{stage:"review2", en:"Publishing Officer", ar:"مسؤول النشر",   email:"publishing@example.com", user:"publishing"},
 };
 const REVIEW_STAGE = {
   review1:{en:"Direction & Production review", ar:"مراجعة الإخراج والإنتاج", ic:"🎬"},
