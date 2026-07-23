@@ -872,7 +872,6 @@ const DICT = {
   routing_h:      {en:"Revision routing — pick the restart stage", ar:"توجيه التعديلات — اختر مرحلة الاستئناف"},
   routing_note:   {en:"The team stays the same. Any revision re-passes full internal review (both stages; prior approvals cleared).",
                    ar:"يبقى الفريق كما هو. أي تعديل يعيد المرور بالمراجعة الداخلية كاملة (المرحلتان؛ تُلغى الموافقات السابقة)."},
-  restart_ip:     {en:"Restart at In progress", ar:"الاستئناف من: قيد التنفيذ"},
   restart_sh:     {en:"Restart at Shooting", ar:"الاستئناف من: التصوير"},
   restart_ed:     {en:"Restart at Editing", ar:"الاستئناف من: المونتاج"},
 
@@ -1481,6 +1480,19 @@ function stageAllFinished(rq, status){
   if(!members.length) return false;
   const recs=rq.field||{};
   return members.every(n=>recs[n] && recs[n].start && recs[n].end);
+}
+/* BUG FIX 2026-07-23 — a revision restart MUST wipe the tracking of the stage it
+   restarts at and every stage after it. Otherwise those members keep last round's
+   start+end stamps: their row reads "✔ اكتمل العمل", no ▶/⏹ button renders, and since
+   a tracked stage now advances only when a member presses ⏹ إنهاء العمل, the request
+   is stuck forever. Restarting at Shooting also clears Editing, because Editing will
+   run again after it. */
+function resetTrackingFrom(rq, status){
+  const from=TRACK_STAGES.indexOf(status);
+  if(from<0) return;
+  const recs=rq.field||{};
+  TRACK_STAGES.slice(from).forEach(s=>stageMembers(rq,s).forEach(n=>{ delete recs[n]; }));
+  rq.field=recs;
 }
 function finishStageIfDone(rq){
   if(!TRACK_STAGES.includes(rq.status)) return false;
@@ -2361,7 +2373,7 @@ function runDashboardAction(act,rq){
   if(!rq) return;
   const noteActions={mk_changes:"note_t_changes",hd_changes:"note_t_changes",mk_toreq:"note_t_sendback",
     r1_ch:"note_t_changes",r2_ch:"note_t_changes",cl_ch:"note_t_changes",cl_final:"note_t_final",
-    cl_rej:"note_t_reject",hd_confirm_cancel:"note_t_cancel",route_ip:"note_t_route",route_sh:"note_t_route",route_ed:"note_t_route"};
+    cl_rej:"note_t_reject",hd_confirm_cancel:"note_t_cancel",route_sh:"note_t_route",route_ed:"note_t_route"};
   const required=["cl_rej","hd_confirm_cancel"];
   if(act==="re_resubmit"||act==="re_edit"){ state.editReq=rq.id; state.view="new"; save(); render(); return; }
   if(act==="hd_assign"){ askAssign(rq); return; }
@@ -2535,13 +2547,12 @@ function renderActionPanel(rq, r){
   }
   // Revision routing (head)
   else if(r==="head" && s==="revision_routing"){
-    /* "Restart at In progress" only makes sense when the revision came from the
-       CLIENT (re-plan the whole production). A change raised by an internal
-       reviewer is about the material itself → Shooting or Editing only. */
-    const fromReview = rq.revisionSource==="review";
+    /* Only the two stages that actually produce material can be restarted.
+       "Restart at In progress" was dropped (2026-07-23): Preparation is planning,
+       so re-running it produces nothing — a revision is always about the footage
+       (Shooting) or the cut (Editing). */
     inner = `<h2>${esc(t("routing_h"))}</h2><div class="note">${esc(t("routing_note"))}</div>
       <div class="btnrow" style="margin-top:12px">
-        ${fromReview?"":`<button class="btn blue" data-act="route_ip">${esc(t("restart_ip"))}</button>`}
         <button class="btn blue" data-act="route_sh">${esc(t("restart_sh"))}</button>
         <button class="btn blue" data-act="route_ed">${esc(t("restart_ed"))}</button>
       </div>`;
@@ -2807,7 +2818,7 @@ function bindDetail(){
   // generic action buttons (some require a note tied to the action)
   const NOTE_ACTIONS={mk_changes:"note_t_changes",hd_changes:"note_t_changes",mk_toreq:"note_t_sendback",
     r1_ch:"note_t_changes",r2_ch:"note_t_changes",cl_ch:"note_t_changes",cl_final:"note_t_final",
-    cl_rej:"note_t_reject",hd_confirm_cancel:"note_t_cancel",route_ip:"note_t_route",route_sh:"note_t_route",route_ed:"note_t_route"};
+    cl_rej:"note_t_reject",hd_confirm_cancel:"note_t_cancel",route_sh:"note_t_route",route_ed:"note_t_route"};
   const REQUIRED=["cl_rej","hd_confirm_cancel"];
   document.querySelectorAll("[data-act]").forEach(el=>el.onclick=()=>{
     const act=el.dataset.act;
@@ -2980,21 +2991,25 @@ function doAction(act, rq, note, files){
       addTl(rq,"Approved — Editorial & Publishing review (Stage 2).","اعتمد — مراجعة التحرير والنشر (المرحلة ٢)."); checkReviewComplete(rq); break;
     case "r1_ch": case "r2_ch": {
       const stg = act==="r1_ch"?"review1":"review2";
-      rq.revisionSource="review";      /* internal → Shooting/Editing only */
+      rq.revisionSource="review";      /* recorded for the audit only */
       rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
       addTl(rq,"Requested changes ("+(stg==="review1"?"Direction & Production":"Editorial & Publishing")+") — routed to Production Head.",
                "طلب تعديلات ("+(stg==="review1"?"الإخراج والإنتاج":"التحرير والنشر")+") — أُحيل لرئيس الإنتاج.",note,files);
       rq.status="revision_routing"; pushNoti("head",rq,"Internal review requested changes — pick restart stage.","طلبت المراجعة تعديلات — اختر مرحلة الاستئناف."); break; }
-    case "route_ip": case "route_sh": case "route_ed": {
-      const map={route_ip:"in_progress",route_sh:"shooting",route_ed:"editing"};
+    case "route_sh": case "route_ed": {
+      const map={route_sh:"shooting",route_ed:"editing"};
       const st=map[act]; rq.g1=false; rq.g2=false; rq.g1By=[]; rq.g2By=[];
-      addTl(rq,"Revision routed — restart at "+statusLabel(st)+".","توجيه التعديل — الاستئناف من "+statusLabel(st)+".",note,files);
+      /* wipe last round's start/finish stamps for this stage and everything after it,
+         so the assigned members can actually work again (see resetTrackingFrom) */
+      resetTrackingFrom(rq, st);
+      addTl(rq,"Revision routed — restart at "+statusLabel(st)+". Work tracking for this stage was reset.",
+               "توجيه التعديل — الاستئناف من "+statusLabel(st)+". أُعيد ضبط تتبّع العمل لهذه المرحلة.",note,files);
       rq.status=st; notifyOwners(rq,"Revision assigned — please redo your stage.","تم إسناد تعديل — يرجى إعادة مرحلتك."); break; }
     case "cl_ok":
       addTl(rq,"Client approved the video.","اعتمد العميل الفيديو.");
       rq.status="ready_to_publish"; notifyOwners(rq,"Client approved — ready to publish.","اعتمد العميل — جاهز للنشر."); break;
     case "cl_ch":
-      rq.revisionSource="client";      /* client → full re-plan allowed */
+      rq.revisionSource="client";      /* recorded for the audit only */
       addTl(rq,"Client requested changes — routed to Production Head.","طلب العميل تعديلات — أُحيل لرئيس الإنتاج.",note,files);
       rq.status="revision_routing"; pushNoti("head",rq,"Client requested changes — pick restart stage.","طلب العميل تعديلات — اختر مرحلة الاستئناف."); break;
     /* UNREACHABLE under the current rule: the client has no action at
@@ -3032,7 +3047,6 @@ const ACTION_TOASTS={
   r2_ok:["Review approved","اعتُمدت المراجعة","good"],
   r1_ch:["Changes requested","طُلبت تعديلات","warn"],
   r2_ch:["Changes requested","طُلبت تعديلات","warn"],
-  route_ip:["Sent back to Preparation","أُعيد للتحضير","warn"],
   route_sh:["Sent back to Shooting","أُعيد للتصوير","warn"],
   route_ed:["Sent back to Editing","أُعيد للمونتاج","warn"],
   cl_ok:["Client approved — ready to publish","اعتمد العميل — جاهز للنشر","good"],
